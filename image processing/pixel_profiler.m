@@ -31,7 +31,7 @@ posttrap = im2gray(image2);
 % Compute line through center of fringes
 % Create an array of matrix values corresponding to a horizontal line
 % passing through the point
-span_horiz = 0.01;
+span_horiz = 0.005;
 span_vert = 0.025;
 
 line_pre_horizontal_temp = zeros(1, n); 
@@ -57,7 +57,7 @@ line_post_vertical = smooth(line_post_vertical_temp,span_vert,'rloess');
 
 %find the local peaks for each image
 prominence_horiz = 10;
-prominence_vert = 10;
+prominence_vert = 0.5;
 [pretrap_pks_horizontal,pre_locs_horiz, pre_width_horiz, pre_prom_horiz] = findpeaks(line_pre_horizontal, 'MinPeakProminence',prominence_horiz);
 [pretrap_pks_vertical, pre_locs_vert, pre_width_vert, pre_prom_vert] = findpeaks(line_pre_vertical, 'MinPeakProminence',prominence_vert);
 
@@ -85,6 +85,10 @@ findpeaks(line_pre_horizontal, 'MinPeakProminence',prominence);
 hold on;
 plot(line_post_horizontal,'r');
 findpeaks(line_post_horizontal, 'MinPeakProminence',prominence);
+
+plot(line_pre_horizontal_temp, ':')
+plot(line_post_horizontal_temp, ':')
+
 xline(center1(1), 'linewidth', 2, 'color', 'r');
 title('Horizontal Pixel Intensities Along Line');
 xlabel('Pixel Index');
@@ -99,6 +103,10 @@ findpeaks(line_pre_vertical, 'MinPeakProminence',prominence);
 hold on;
 plot(line_post_vertical,'r');
 findpeaks(line_post_vertical, 'MinPeakProminence',prominence);
+
+plot(line_pre_vertical_temp, ':')
+plot(line_post_vertical_temp, ':')
+
 xline(center1(2), 'linewidth', 2, 'color', 'r');
 title('Vertical Pixel Intensities Along Line');
 xlabel('Pixel Index');
