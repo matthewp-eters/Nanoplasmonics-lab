@@ -19,44 +19,141 @@ opts = fitoptions('Method', 'NonlinearLeastSquares', 'Lower', [0, 0], 'Upper', [
 % Extract the fitted corner frequency
 fc = fitresult.fc;
 
-% Plot the results
+
+PS = PLOT_STANDARDS();
+
+%% Trapping signal
 figure;
-subplot(1, 3, 1)
-semilogx(f_fit, 10*log10(Pxx_fit), 'b');
-hold on;
-semilogx(f_fit, 10*log10(fitresult(f_fit)), 'r');
-fc_text = sprintf('fc = %.2f Hz', fc);
-fc_text_pos = [fc*1.25, 0.975*10*log10(fitresult(fc))];
-text(fc_text_pos(1), fc_text_pos(2), fc_text, 'HorizontalAlignment', 'left', 'VerticalAlignment', 'bottom');
-line([fc fc], [get(gca, 'YLim')], 'LineStyle', ':', 'Color', 'r');
-plot(fc, 10*log10(fitresult(fc)), 'ro', 'MarkerFaceColor', 'r');
-xlabel('Frequency (Hz)', 'FontSize',30,'FontWeight','bold');
-ylabel('Power spectral density (dB/Hz)', 'FontSize',30,'FontWeight','bold');
-title_text = sprintf('%s PSD', file_name);
-title(title_text, 'FontSize',30,'FontWeight','bold');
-legend('PSD', 'Fitted Lorentzian');
-ax = gca; 
-ax.FontSize = 16;
+% Get the handle of figure(n).
+fig1_comps.fig = gcf;
+fig1_comps.p1 = plot(time, voltage);
+%========================================================
+% ADD LABELS, LEGEND AND SPECIFY SPACING AND PADDING
 
-subplot(1,3,2)
-histogram(trapped / max(abs(trapped)), 'Normalization', 'pdf');
-xlabel('Signal', 'FontSize',30,'FontWeight','bold');
-ylabel('Counts', 'FontSize',30,'FontWeight','bold');
-title_text1 = sprintf('%s Histogram', file_name);
-title(title_text1, 'FontSize',30,'FontWeight','bold');
-ax = gca; 
-ax.FontSize = 16;
+% Add Global Labels and Title
+fig1_comps.plotTitle = title(file_name);
+fig1_comps.plotXLabel = xlabel('Time(s)');
+fig1_comps.plotYLabel = ylabel('Voltage(V)');
 
-subplot(1,3,3)
-plot(time, voltage, "LineWidth",1)
-hold on; 
-plot(time, lowpass(voltage,0.1,fs))
-xt = get(gca, 'XTick');
-set(gca, 'XTick',xt, 'XTickLabel',xt/100000)
-xlabel('Time (s)', 'FontSize',30,'FontWeight','bold')
-ylabel('Voltage (V)', 'FontSize',30,'FontWeight','bold')
-ax = gca; 
-ax.FontSize = 16;
-title(file_name, 'FontSize',30,'FontWeight','bold')
+%========================================================
+% ADJUST FONT
+
+set(gca, 'FontName', PS.DefaultFont, 'FontWeight', 'bold');
+set([fig1_comps.plotTitle, fig1_comps.plotXLabel, fig1_comps.plotYLabel], 'FontName', PS.DefaultFont);
+%set(fig1_comps.plotText, 'FontName', PS.DefaultFont);
+set(gca, 'FontSize', PS.AxisNumbersFontSize);
+set([fig1_comps.plotXLabel, fig1_comps.plotYLabel], 'FontSize', PS.AxisFontSize);
+%set(fig1_comps.plotText, 'FontSize', PS.AxisFontSize);
+set(fig1_comps.plotTitle, 'FontSize', PS.TitleFontSize, 'FontWeight' , 'bold');
+
+ax = gca;
+ax.YAxis.Limits = [0, 3.1];
+ax.XAxis.Limits = [min(time), max(time)];
+set(gca,'XAxisLocation', 'bottom', 'YAxisLocation', 'left');
+
+%========================================================
+% INSTANTLY IMPROVE AESTHETICS
+
+% Set default properties for fign
+STANDARDIZE_FIGURE(fig1_comps);
+
+%set(fig1_comps.p1, 'LineStyle', 'none', 'Marker', 'o', 'MarkerSize', 6, 'MarkerEdgeColor', PS.Blue4, 'MarkerFaceColor', PS.Blue1);
+set(fig1_comps.p1, 'Color', PS.Blue4);
+
+axis square
+
+
+%% PSD
+figure;
+% Get the handle of figure(n).
+fig1_comps.fig = gcf;
+fig1_comps.p1 = semilogx(f_fit, 10*log10(Pxx_fit));
+hold on
+fig1_comps.p2 = semilogx(f_fit, 10*log10(fitresult(f_fit)));
+fig1_comps.p3 = plot(fc, 10*log10(fitresult(fc)));
+fig1_comps.p4 = line([fc fc], [get(gca, 'YLim')]);
 hold off
+
+
+%========================================================
+% ADD LABELS, LEGEND AND SPECIFY SPACING AND PADDING
+
+% Add Global Labels and Title
+fig1_comps.plotTitle = title(file_name);
+fig1_comps.plotXLabel = xlabel('Frequency (Hz)');
+fig1_comps.plotYLabel = ylabel('PSD (dB/Hz)');
+
+%========================================================
+% ADJUST FONT
+
+set(gca, 'FontName', PS.DefaultFont, 'FontWeight', 'bold');
+set([fig1_comps.plotTitle, fig1_comps.plotXLabel, fig1_comps.plotYLabel], 'FontName', PS.DefaultFont);
+%set(fig1_comps.plotText, 'FontName', PS.DefaultFont);
+set(gca, 'FontSize', PS.AxisNumbersFontSize);
+set([fig1_comps.plotXLabel, fig1_comps.plotYLabel], 'FontSize', PS.AxisFontSize);
+%set(fig1_comps.plotText, 'FontSize', PS.AxisFontSize);
+set(fig1_comps.plotTitle, 'FontSize', PS.TitleFontSize, 'FontWeight' , 'bold');
+ax = gca;
+ax.XAxis.Limits = [min(f_fit), max(f_fit)];
+set(gca,'XAxisLocation', 'bottom', 'YAxisLocation', 'left');
+
+%text
+% set position of the text
+xpos = fc*1.25;
+ypos = 0.975*10*log10(fitresult(fc));
+% here we put 2 backslash \\pi, to espcape the backslash and interpret it
+% as for literal character
+text_string = sprintf('fc = %.2f Hz', fc);
+fig1_comps.plotText = text(xpos, ypos, text_string, 'Interpreter', 'latex', 'Color', PS.MyBlack, 'FontSize', 30);
+%========================================================
+% INSTANTLY IMPROVE AESTHETICS
+
+% Set default properties for fign
+STANDARDIZE_FIGURE(fig1_comps);
+
+%set(fig1_comps.p1, 'LineStyle', 'none', 'Marker', 'o', 'MarkerSize', 6, 'MarkerEdgeColor', PS.Blue4, 'MarkerFaceColor', PS.Blue1);
+set(fig1_comps.p1, 'Color', PS.Blue4);
+set(fig1_comps.p2, 'Color', PS.Red2);
+set(fig1_comps.p3, 'Color', PS.Red3);
+set(fig1_comps.p4, 'LineStyle', ':', 'Color', PS.Red3);
+
+axis square
+
+%% Histogram
+figure;
+% Get the handle of figure(n).
+fig1_comps.fig = gcf;
+fig1_comps.p1 = histogram(trapped / max(abs(trapped)), 'Normalization', 'pdf');
+%========================================================
+% ADD LABELS, LEGEND AND SPECIFY SPACING AND PADDING
+
+% Add Global Labels and Title
+fig1_comps.plotTitle = title(file_name);
+fig1_comps.plotXLabel = xlabel('Signal');
+fig1_comps.plotYLabel = ylabel('Counts');
+
+%========================================================
+% ADJUST FONT
+
+set(gca, 'FontName', PS.DefaultFont, 'FontWeight', 'bold');
+set([fig1_comps.plotTitle, fig1_comps.plotXLabel, fig1_comps.plotYLabel], 'FontName', PS.DefaultFont);
+%set(fig1_comps.plotText, 'FontName', PS.DefaultFont);
+set(gca, 'FontSize', PS.AxisNumbersFontSize);
+set([fig1_comps.plotXLabel, fig1_comps.plotYLabel], 'FontSize', PS.AxisFontSize);
+%set(fig1_comps.plotText, 'FontSize', PS.AxisFontSize);
+set(fig1_comps.plotTitle, 'FontSize', PS.TitleFontSize, 'FontWeight' , 'bold');
+
+
+%========================================================
+% INSTANTLY IMPROVE AESTHETICS
+
+% Set default properties for fign
+STANDARDIZE_FIGURE(fig1_comps);
+
+axis square
+%set(fig1_comps.p1, 'LineStyle', 'none', 'Marker', 'o', 'MarkerSize', 6, 'MarkerEdgeColor', PS.Blue4, 'MarkerFaceColor', PS.Blue1);
+
+
+
+
 end
