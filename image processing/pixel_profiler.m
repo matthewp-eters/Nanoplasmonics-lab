@@ -43,6 +43,26 @@ rectPos = getPosition(h);
     centers1 = [x y];
     radii1 = rectPos(3)-rectPos(1);
 
+x1 = round(rectPos(1));
+y1 = round(rectPos(2));
+x2 = round(rectPos(1) + rectPos(3));
+y2 = round(rectPos(2) + rectPos(4));
+
+averageValues = zeros(2, 1);
+% Extract the rectangular region for image 1
+rectRegion1 = image1(y1:y2, x1:x2);
+averageValues(1) = mean(rectRegion1(:));
+
+% Extract the rectangular region for image 2
+rectRegion2 = image2(y1:y2, x1:x2);
+averageValues(2) = mean(rectRegion2(:));
+
+
+
+
+
+
+
 %[centers1, radii1] = imfindcircles(reference, [5 20], 'Sensitivity', circle_sensitivity);
 %[centers2, radii2] = imfindcircles(image2, [20 40], 'Sensitivity', circle_sensitivity);
 
@@ -82,27 +102,6 @@ line_post_horizontal = double(posttrap(center_row, center1(1):(center1(1)+num_pi
 center_col = center1(1);
 line_pre_vertical = double(pretrap(center1(2):(center1(2)+num_pixels-1), center_col))';
 line_post_vertical = double(posttrap(center1(2):(center1(2)+num_pixels-1), center_col))';
-%horizontal fig
-figure;
-plot(line_pre_horizontal)
-hold on
-plot(line_post_horizontal)
-title('Horizontal Pixel Intensities Along Line');
-xlabel('Pixel Index');
-ylabel('Intensity');
-legend('Untrapped','Trapped');
-hold off
-
-%vertical figure
-figure;
-plot(line_pre_vertical)
-hold on
-plot(line_post_vertical)
-title('Vertical Pixel Intensities Along Line');
-xlabel('Pixel Index');
-ylabel('Intensity');
-legend('Untrapped','Trapped');
-hold off
 
 %smoothing
 line_pre_horizontal = smooth(line_pre_horizontal, span_horiz, 'rloess');
@@ -185,9 +184,18 @@ line_post_vertical = smooth(line_post_vertical, span_vert, 'rloess');
 
 horiz_peaks_difference = [];
 vert_peaks_difference = [];
+horiz_peaks_pre = [];
+vert_peaks_pre = [];
+horiz_peaks_post = [];
+vert_peaks_post = [];
 for i = 1:3
     horiz_peaks_difference = [horiz_peaks_difference,pretrap_pks_horizontal(i) - posttrap_pks_horizontal(i)];
     vert_peaks_difference = [vert_peaks_difference,pretrap_pks_vertical(i) - posttrap_pks_vertical(i)];
+    horiz_peaks_pre = [horiz_peaks_pre, pretrap_pks_horizontal(i) ];
+    vert_peaks_pre = [vert_peaks_pre, pretrap_pks_vertical(i)];
+    horiz_peaks_post = [horiz_peaks_post, posttrap_pks_horizontal(i)];
+    vert_peaks_post = [vert_peaks_post, posttrap_pks_vertical(i)];
+    
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -198,9 +206,9 @@ PS = PLOT_STANDARDS();
 figure;
 % Get the handle of figure(n).
 fig1_comps.fig = gcf;
-fig1_comps.p1 = scatter([1 2 3],horiz_peaks_difference, 200, "filled", 'b');
+fig1_comps.p1 = scatter([1 2 3],horiz_peaks_difference, 200, "filled");
 hold on
-fig1_comps.p2 = scatter([1 2 3], vert_peaks_difference, 200, "filled", 'r');
+fig1_comps.p2 = scatter([1 2 3], vert_peaks_difference, 200, "filled");
 hold off
 
 %========================================================
@@ -236,7 +244,144 @@ set(fig1_comps.plotLegend, 'FontSize', PS.LegendFontSize, 'LineWidth', 1.5, ...
 % INSTANTLY IMPROVE AESTHETICS
 % Set default properties for fign
 STANDARDIZE_FIGURE(fig1_comps);
-%set(fig1_comps.p1, 'LineStyle', 'none', 'Marker', 'o', 'MarkerSize', 6, 'MarkerEdgeColor', PS.Blue4, 'MarkerFaceColor', PS.Blue1);
+set(fig1_comps.p1,'MarkerEdgeColor', PS.DGreen4, 'MarkerFaceColor', PS.DGreen1);
+set(fig1_comps.p2,'MarkerEdgeColor', PS.Purple4, 'MarkerFaceColor', PS.Purple1);
+axis square
+
+
+
+
+
+% horizontal pre and post trap peaks
+figure;
+% Get the handle of figure(n).
+fig1_comps.fig = gcf;
+fig1_comps.p1 = scatter([1 2 3], horiz_peaks_pre, 200, "filled");
+hold on
+fig1_comps.p2 = scatter([1 2 3], horiz_peaks_post, 200, "filled");
+hold off
+
+%========================================================
+% ADD LABELS, LEGEND AND SPECIFY SPACING AND PADDING
+% Add Global Labels and Title
+fig1_comps.plotTitle = title('Horizontal Peaks');
+fig1_comps.plotXLabel = xlabel('Peak');
+fig1_comps.plotYLabel = ylabel('Intensity');
+
+%========================================================
+% ADJUST FONT
+
+set(gca, 'FontName', PS.DefaultFont, 'FontWeight', 'bold');
+set([fig1_comps.plotTitle, fig1_comps.plotXLabel, fig1_comps.plotYLabel], 'FontName', PS.DefaultFont);
+%set(fig1_comps.plotText, 'FontName', PS.DefaultFont);
+set(gca, 'FontSize', PS.AxisNumbersFontSize);
+set([fig1_comps.plotXLabel, fig1_comps.plotYLabel], 'FontSize', PS.AxisFontSize);
+%set(fig1_comps.plotText, 'FontSize', PS.AxisFontSize);
+set(fig1_comps.plotTitle, 'FontSize', PS.TitleFontSize, 'FontWeight' , 'bold');
+ax = gca;
+ax.XAxis.Limits = [0.5, 3.5];
+xticks([1 2 3])
+set(gca,'XAxisLocation', 'bottom', 'YAxisLocation', 'left');
+% ADD LEGEND
+fig1_comps.plotLegend = legend('Untrapped', 'Trapped','Interpreter', 'none');
+% Legend Properties
+legendX0 = .7; legendY0 = .08; legendWidth = .1; legendHeight = .1;
+set(fig1_comps.plotLegend, 'position', [legendX0, legendY0, legendWidth, ...
+    legendHeight], 'Box', 'on');
+set(fig1_comps.plotLegend, 'FontSize', PS.LegendFontSize, 'LineWidth', 1.5, ...
+    'EdgeColor', PS.Red4);
+%========================================================
+% INSTANTLY IMPROVE AESTHETICS
+% Set default properties for fign
+STANDARDIZE_FIGURE(fig1_comps);
+set(fig1_comps.p1,'MarkerEdgeColor', PS.Blue4, 'MarkerFaceColor', PS.Blue1);
+set(fig1_comps.p2,'MarkerEdgeColor', PS.Red4, 'MarkerFaceColor', PS.Red1);
+axis square
+
+
+% vertical pre and post trap peaks
+figure;
+% Get the handle of figure(n).
+fig1_comps.fig = gcf;
+fig1_comps.p1 = scatter([1 2 3], vert_peaks_pre, 200, "filled");
+hold on
+fig1_comps.p2 = scatter([1 2 3], vert_peaks_post, 200, "filled");
+hold off
+
+%========================================================
+% ADD LABELS, LEGEND AND SPECIFY SPACING AND PADDING
+% Add Global Labels and Title
+fig1_comps.plotTitle = title('Vertical Peaks');
+fig1_comps.plotXLabel = xlabel('Peak');
+fig1_comps.plotYLabel = ylabel('Intensity');
+
+%========================================================
+% ADJUST FONT
+
+set(gca, 'FontName', PS.DefaultFont, 'FontWeight', 'bold');
+set([fig1_comps.plotTitle, fig1_comps.plotXLabel, fig1_comps.plotYLabel], 'FontName', PS.DefaultFont);
+%set(fig1_comps.plotText, 'FontName', PS.DefaultFont);
+set(gca, 'FontSize', PS.AxisNumbersFontSize);
+set([fig1_comps.plotXLabel, fig1_comps.plotYLabel], 'FontSize', PS.AxisFontSize);
+%set(fig1_comps.plotText, 'FontSize', PS.AxisFontSize);
+set(fig1_comps.plotTitle, 'FontSize', PS.TitleFontSize, 'FontWeight' , 'bold');
+ax = gca;
+ax.XAxis.Limits = [0.5, 3.5];
+xticks([1 2 3])
+set(gca,'XAxisLocation', 'bottom', 'YAxisLocation', 'left');
+% ADD LEGEND
+fig1_comps.plotLegend = legend('Untrapped', 'Trapped','Interpreter', 'none');
+% Legend Properties
+legendX0 = .7; legendY0 = .08; legendWidth = .1; legendHeight = .1;
+set(fig1_comps.plotLegend, 'position', [legendX0, legendY0, legendWidth, ...
+    legendHeight], 'Box', 'on');
+set(fig1_comps.plotLegend, 'FontSize', PS.LegendFontSize, 'LineWidth', 1.5, ...
+    'EdgeColor', PS.Red4);
+%========================================================
+% INSTANTLY IMPROVE AESTHETICS
+% Set default properties for fign
+STANDARDIZE_FIGURE(fig1_comps);
+set(fig1_comps.p1,'MarkerEdgeColor', PS.Blue4, 'MarkerFaceColor', PS.Blue1);
+set(fig1_comps.p2,'MarkerEdgeColor', PS.Red4, 'MarkerFaceColor', PS.Red1);
+axis square
+
+
+
+
+%% Center intensity
+figure;
+% Get the handle of figure(n).
+fig1_comps.fig = gcf;
+fig1_comps.p1 = bar(1, averageValues(1), 0.75);
+hold on
+fig1_comps.p2 = bar(2, averageValues(2), 0.75);
+xticks([1, 2]);
+xticklabels({'Untrapped', 'Trapped'});
+%========================================================
+% ADD LABELS, LEGEND AND SPECIFY SPACING AND PADDING
+% Add Global Labels and Title
+fig1_comps.plotTitle = title('Center Intensity');
+fig1_comps.plotYLabel = ylabel('Average Pixel Intensity');
+
+%========================================================
+% ADJUST FONT
+set(gca, 'FontName', PS.DefaultFont, 'FontWeight', 'bold');
+set([fig1_comps.plotTitle, fig1_comps.plotXLabel, fig1_comps.plotYLabel], 'FontName', PS.DefaultFont);
+%set(fig1_comps.plotText, 'FontName', PS.DefaultFont);
+set(gca, 'FontSize', PS.AxisNumbersFontSize);
+set([fig1_comps.plotXLabel, fig1_comps.plotYLabel], 'FontSize', PS.AxisFontSize);
+%set(fig1_comps.plotText, 'FontSize', PS.AxisFontSize);
+set(fig1_comps.plotTitle, 'FontSize', PS.TitleFontSize, 'FontWeight' , 'bold');
+ax = gca;
+ax.YAxis.Limits = [0, 260];
+set(gca,'XAxisLocation', 'bottom', 'YAxisLocation', 'left');
+hold off
+%========================================================
+% INSTANTLY IMPROVE AESTHETICS
+% Set default properties for fign
+STANDARDIZE_FIGURE(fig1_comps);
+set(fig1_comps.p1, 'EdgeColor', PS.Blue4, 'FaceColor', PS.Blue1);
+set(fig1_comps.p2, 'EdgeColor', PS.Red4, 'FaceColor', PS.Red1);
 axis square
 
 
@@ -339,6 +484,7 @@ set([fig1_comps.plotXLabel, fig1_comps.plotYLabel], 'FontSize', PS.AxisFontSize)
 %set(fig1_comps.plotText, 'FontSize', PS.AxisFontSize);
 set(fig1_comps.plotTitle, 'FontSize', PS.TitleFontSize, 'FontWeight' , 'bold');
 ax = gca;
+ax.YAxis.Limits = [0, 260];
 set(gca,'XAxisLocation', 'bottom', 'YAxisLocation', 'left');
 % ADD LEGEND
 fig1_comps.plotLegend = legend('Untrapped','Trapped','Interpreter', 'none');
@@ -371,7 +517,7 @@ plot(line_post_horizontal, ':')
 title('Horizontal Pixel Intensities Along Line');
 xlabel('Pixel Index');
 ylabel('Intensity');
-legend('Untrapped', 'Untrapped','Trapped','Trapped');
+legend('Untrapped', 'Peak','Trapped','Peak');
 hold off
 
 %% Plot pixel intensities vertical
@@ -399,6 +545,8 @@ set([fig1_comps.plotXLabel, fig1_comps.plotYLabel], 'FontSize', PS.AxisFontSize)
 %set(fig1_comps.plotText, 'FontSize', PS.AxisFontSize);
 set(fig1_comps.plotTitle, 'FontSize', PS.TitleFontSize, 'FontWeight' , 'bold');
 ax = gca;
+ax.YAxis.Limits = [0, 260];
+
 set(gca,'XAxisLocation', 'bottom', 'YAxisLocation', 'left');
 % ADD LEGEND
 fig1_comps.plotLegend = legend('Untrapped','Trapped','Interpreter', 'none');
@@ -434,7 +582,7 @@ plot(line_post_vertical, ':')
 title('Vertical Pixel Intensities Along Line');
 xlabel('Pixel Index');
 ylabel('Intensity');
-legend('Untrapped', 'Untrapped','Trapped','Trapped');
+legend('Untrapped', 'Peak','Trapped','Peak');
 hold off
 
 
