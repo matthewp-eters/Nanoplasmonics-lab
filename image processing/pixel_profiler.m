@@ -188,6 +188,10 @@ horiz_peaks_pre = [];
 vert_peaks_pre = [];
 horiz_peaks_post = [];
 vert_peaks_post = [];
+pre_locs_horiz_temp = [];
+post_locs_horiz_temp = [];
+pre_locs_vert_temp = [];
+post_locs_vert_temp = [];
 for i = 1:3
     horiz_peaks_difference = [horiz_peaks_difference,pretrap_pks_horizontal(i) - posttrap_pks_horizontal(i)];
     vert_peaks_difference = [vert_peaks_difference,pretrap_pks_vertical(i) - posttrap_pks_vertical(i)];
@@ -195,6 +199,10 @@ for i = 1:3
     vert_peaks_pre = [vert_peaks_pre, pretrap_pks_vertical(i)];
     horiz_peaks_post = [horiz_peaks_post, posttrap_pks_horizontal(i)];
     vert_peaks_post = [vert_peaks_post, posttrap_pks_vertical(i)];
+    pre_locs_horiz_temp = [pre_locs_horiz_temp, pre_locs_horiz(i)];
+    post_locs_horiz_temp = [post_locs_horiz_temp, post_locs_horiz(i)];
+    pre_locs_vert_temp = [pre_locs_vert_temp, pre_locs_vert(i)];
+    post_locs_vert_temp = [post_locs_vert_temp, post_locs_vert(i)];
     
 end
 
@@ -328,6 +336,101 @@ set(fig1_comps.plotTitle, 'FontSize', PS.TitleFontSize, 'FontWeight' , 'bold');
 ax = gca;
 ax.XAxis.Limits = [0.5, 3.5];
 xticks([1 2 3])
+set(gca,'XAxisLocation', 'bottom', 'YAxisLocation', 'left');
+% ADD LEGEND
+fig1_comps.plotLegend = legend('Untrapped', 'Trapped','Interpreter', 'none');
+% Legend Properties
+legendX0 = .7; legendY0 = .08; legendWidth = .1; legendHeight = .1;
+set(fig1_comps.plotLegend, 'position', [legendX0, legendY0, legendWidth, ...
+    legendHeight], 'Box', 'on');
+set(fig1_comps.plotLegend, 'FontSize', PS.LegendFontSize, 'LineWidth', 1.5, ...
+    'EdgeColor', PS.Red4);
+%========================================================
+% INSTANTLY IMPROVE AESTHETICS
+% Set default properties for fign
+STANDARDIZE_FIGURE(fig1_comps);
+set(fig1_comps.p1,'MarkerEdgeColor', PS.Blue4, 'MarkerFaceColor', PS.Blue1);
+set(fig1_comps.p2,'MarkerEdgeColor', PS.Red4, 'MarkerFaceColor', PS.Red1);
+axis square
+
+
+% x axis pre and post trap peaks locations - horizontal
+figure;
+% Get the handle of figure(n).
+fig1_comps.fig = gcf;
+fig1_comps.p1 = scatter(pre_locs_horiz_temp,[1 2 3],  200, "filled");
+hold on
+fig1_comps.p2 = scatter(post_locs_horiz_temp, [1 2 3], 200, "filled");
+hold off
+
+%========================================================
+% ADD LABELS, LEGEND AND SPECIFY SPACING AND PADDING
+% Add Global Labels and Title
+fig1_comps.plotTitle = title('Horizontal Peak Shift');
+fig1_comps.plotXLabel = xlabel('Location');
+fig1_comps.plotYLabel = ylabel('Peak');
+
+%========================================================
+% ADJUST FONT
+
+set(gca, 'FontName', PS.DefaultFont, 'FontWeight', 'bold');
+set([fig1_comps.plotTitle, fig1_comps.plotXLabel, fig1_comps.plotYLabel], 'FontName', PS.DefaultFont);
+%set(fig1_comps.plotText, 'FontName', PS.DefaultFont);
+set(gca, 'FontSize', PS.AxisNumbersFontSize);
+set([fig1_comps.plotXLabel, fig1_comps.plotYLabel], 'FontSize', PS.AxisFontSize);
+%set(fig1_comps.plotText, 'FontSize', PS.AxisFontSize);
+set(fig1_comps.plotTitle, 'FontSize', PS.TitleFontSize, 'FontWeight' , 'bold');
+ax = gca;
+ax.YAxis.Limits = [0.5, 3.5];
+yticks([1 2 3])
+set(gca,'XAxisLocation', 'bottom', 'YAxisLocation', 'left');
+% ADD LEGEND
+fig1_comps.plotLegend = legend('Untrapped', 'Trapped','Interpreter', 'none');
+% Legend Properties
+legendX0 = .7; legendY0 = .08; legendWidth = .1; legendHeight = .1;
+set(fig1_comps.plotLegend, 'position', [legendX0, legendY0, legendWidth, ...
+    legendHeight], 'Box', 'on');
+set(fig1_comps.plotLegend, 'FontSize', PS.LegendFontSize, 'LineWidth', 1.5, ...
+    'EdgeColor', PS.Red4);
+%========================================================
+% INSTANTLY IMPROVE AESTHETICS
+% Set default properties for fign
+STANDARDIZE_FIGURE(fig1_comps);
+set(fig1_comps.p1,'MarkerEdgeColor', PS.Blue4, 'MarkerFaceColor', PS.Blue1);
+set(fig1_comps.p2,'MarkerEdgeColor', PS.Red4, 'MarkerFaceColor', PS.Red1);
+axis square
+
+
+
+% x axis pre and post trap peaks locations - vertical
+figure;
+% Get the handle of figure(n).
+fig1_comps.fig = gcf;
+fig1_comps.p1 = scatter(pre_locs_vert_temp,[1 2 3],  200, "filled");
+hold on
+fig1_comps.p2 = scatter(post_locs_vert_temp,[1 2 3],  200, "filled");
+hold off
+
+%========================================================
+% ADD LABELS, LEGEND AND SPECIFY SPACING AND PADDING
+% Add Global Labels and Title
+fig1_comps.plotTitle = title('Vertical Peak Shift');
+fig1_comps.plotXLabel = xlabel('Location');
+fig1_comps.plotYLabel = ylabel('Peak');
+
+%========================================================
+% ADJUST FONT
+
+set(gca, 'FontName', PS.DefaultFont, 'FontWeight', 'bold');
+set([fig1_comps.plotTitle, fig1_comps.plotXLabel, fig1_comps.plotYLabel], 'FontName', PS.DefaultFont);
+%set(fig1_comps.plotText, 'FontName', PS.DefaultFont);
+set(gca, 'FontSize', PS.AxisNumbersFontSize);
+set([fig1_comps.plotXLabel, fig1_comps.plotYLabel], 'FontSize', PS.AxisFontSize);
+%set(fig1_comps.plotText, 'FontSize', PS.AxisFontSize);
+set(fig1_comps.plotTitle, 'FontSize', PS.TitleFontSize, 'FontWeight' , 'bold');
+ax = gca;
+ax.YAxis.Limits = [0.5, 3.5];
+yticks([1 2 3])
 set(gca,'XAxisLocation', 'bottom', 'YAxisLocation', 'left');
 % ADD LEGEND
 fig1_comps.plotLegend = legend('Untrapped', 'Trapped','Interpreter', 'none');
