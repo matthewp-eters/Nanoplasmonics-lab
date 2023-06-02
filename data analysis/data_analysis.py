@@ -15,6 +15,7 @@ from nptdms import TdmsFile
 from scipy.optimize import curve_fit
 from tkinter import Tk, filedialog
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 def plot_file_data():
@@ -50,7 +51,7 @@ def plot_file_data():
             data = pd.read_csv(file_path, skiprows=16, header=None, delim_whitespace=True).values
             voltage = data[:,0]
             time_step = 0.00001
-            time = np.arange(0, len(voltage)*time_step, time_step)
+            time = np.arange(0, (len(voltage)-0.5)*time_step, time_step)
         elif ext == '.tdms':
             tdms_file = TdmsFile(file_path)
             groups = tdms_file.groups()
@@ -70,7 +71,7 @@ def plot_file_data():
         
         plt.figure()
         plt.plot(time, voltage, linewidth=1)
-        plt.xticks(np.arange(0, max(time), step=100))
+        plt.xticks(np.arange(0, max(time), step=5))
         plt.xlabel('Time (s)', fontsize=20, fontweight='bold')
         plt.ylabel('Voltage (V)', fontsize=20, fontweight='bold')
         plt.xticks(fontsize=16)
@@ -85,7 +86,7 @@ def Lorentzian(f, A, fc):
     return A / (f**2 + fc**2)
 
 
-def compute_PSD(voltage, fs, start, ending):
+def compute_PSD(voltage, fs, start, ending, name):
     if not isinstance(voltage, np.ndarray):
         voltage_array=np.array(voltage[0])
     else:
@@ -96,7 +97,7 @@ def compute_PSD(voltage, fs, start, ending):
     fftfreq = scipy.fftpack.fftfreq(len(voltage_PSD), d=1/fs)
     i = fftfreq > 0
     
-    return fftfreq[i], voltage_PSD[i]
+    return fftfreq[i], voltage_PSD[i], name
 
 
 def find_nearest_idx(array, value):
@@ -109,6 +110,7 @@ def find_nearest_idx(array, value):
 def psd_fitter(psd, minFreq, maxFreq, plot = False):
     freqs = psd[0]
     psd_data = psd[1]
+    file_name = psd[2]
     
     min_freq_idx = find_nearest_idx(freqs, minFreq)
     max_freq_idx = find_nearest_idx(freqs, maxFreq)
@@ -128,6 +130,7 @@ def psd_fitter(psd, minFreq, maxFreq, plot = False):
         plt.plot(fs, ys, '.', label = "data")
         plt.plot(fs, Lorentzian(fs, A, fc),'--', label="fitted")
         plt.title(f"Corner freq = {-fc} Hz")
+        #plt.text(.01, .01, file_name, ha='left', va='bottom')
         plt.xlabel('Frequency (Hz)')
         plt.ylabel('P (V$^2$/Hz')
         plt.xscale('Log')
@@ -139,61 +142,115 @@ def psd_fitter(psd, minFreq, maxFreq, plot = False):
 
 
 
+def gaussian(x, A, beta, B, mu, sigma):
+    return (A * np.exp(-x/beta) + B * np.exp(-1.0 * (x - mu)**2 / (2 * sigma**2)))
 
-from scipy.signal import butter, filtfilt
-
-def find_trapped_signal(data, threshold=0.1, window_size=10):
-    # Apply low-pass filter to smooth signal
-    b, a = butter(3, 0.1)
-    smoothed_data = filtfilt(b, a, data)
-
-    # Calculate derivative of smoothed signal
-    derivative = np.gradient(smoothed_data)
-
-    # Calculate standard deviation of signal in sliding window
-    std_dev = np.zeros_like(smoothed_data)
-    for i in range(window_size // 2, len(smoothed_data) - window_size // 2):
-        std_dev[i] = np.std(smoothed_data[i - window_size // 2 : i + window_size // 2])
-
-    # Find indices where both derivative and std_dev exceed threshold
-    idx = np.argwhere((np.abs(derivative) > threshold) & (std_dev > threshold))
-
-    # Find the largest group of consecutive indices
-    groups = np.split(idx, np.where(np.diff(idx) != 1)[0] + 1)
-    largest_group = max(groups, key=len)
-    start_idx, end_idx = largest_group[0], largest_group[-1]
-
-    print(f"Trapped signal start: {start_idx}, end: {end_idx}")
-    return (start_idx, end_idx)
+def histogram(trapped, file_name, plot=False):
 
 
+    if plot:
+        #sns.set_style('darkgrid')
+        sns.displot(trapped, kde=True)
+        
+    else:
+        pass
+
+    #print("File Name:", file_name)
+    #print("FWHM:", fwhm)
+
+    return #fwhm
+
+    
+    
+
+def plot_on_top(files, plot = False):
+   if plot:
+        plt.figure()
+    
+        for data in files:
+            time = data['time']
+            voltage = data['voltage']
+            name = data['name']
+            plt.plot(time, voltage, linewidth=1)
+            
+        plt.xticks(np.arange(0, max(time), step=100))
+        plt.xlabel('Time (s)', fontsize=20, fontweight='bold')
+        plt.ylabel('Voltage (V)', fontsize=20, fontweight='bold')
+        plt.xticks(fontsize=16)
+        plt.show()
+        
+def calculate_rms(signal, window_length, file_name):
+    """
+    Calculate the RMS for sections of the input signal based on a single window length
+    and print the file name and average RMS value.
+
+    Args:
+        signal (array-like): Input signal.
+        window_length (int): Length of the window for splitting the data.
+        file_name (str): Name of the file.
+
+    Returns:
+        float: Average RMS value.
+    """
+    num_sections = len(signal) // window_length
+    rms_values = []
+
+    for i in range(num_sections):
+        section = signal[i * window_length : (i + 1) * window_length]
+        squared_values = np.square(section)
+        mean_squared = np.mean(squared_values)
+        rms = np.sqrt(mean_squared)
+        rms_values.append(rms)
+
+    average_rms = np.mean(rms_values)
+
+    print("File Name:", file_name)
+    print("Average RMS:", average_rms)
+
+    return average_rms
 
 
+        
+def newFile(trapped):
+        # reshape data to a single column
+        trapped = trapped.reshape(-1, 1)
+            
+        # save data to text file
+        np.savetxt('CTC009_trapped.txt', trapped, fmt='%.8f', delimiter='\n')
+        
+    
 def main():
     file_data = plot_file_data()
     PSD_data = []
     if file_data:
         print("Files selected successfully!")
-       # start = 51
-       # ending = 60
         
-        for signal in file_data:
-            start, ending = find_trapped_signal(signal['voltage'])
+        plot_on_top(file_data, plot = False)
+        
+        # for signal in file_data:
+        #     start, ending = find_trapped_signal(signal['voltage'])
             
         for data in file_data:
             time = data['time']
+            start = time[0]
+            ending = 5
             voltage = data['voltage']
             minTrappedTime = find_nearest_idx(time, start)
             maxTrappedTime = find_nearest_idx(time, ending)
             trapped = voltage[minTrappedTime:maxTrappedTime]
             fs = data['fs']
             name = data['name']
+        #newFile(trapped)
             
             # Call compute_PSD function to compute PSD
-            psd = compute_PSD(trapped, fs, start, ending)
+            psd = compute_PSD(trapped, fs, start, ending, name)
             PSD_data.append(psd)
+            
+            calculate_rms(trapped, 5, name)
+            histogram(trapped, name, plot=False)
+            
         for array in PSD_data:
-            psd_fitter(array, 1, 4000, plot=True)
+            psd_fitter(array, 5, 4000, plot=False)
             
             
     else:
