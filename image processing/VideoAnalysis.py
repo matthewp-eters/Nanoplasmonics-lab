@@ -11,6 +11,9 @@ import matplotlib.pyplot as plt
 #from skimage import io
 from scipy.fftpack import fft, fftfreq
 import matplotlib.patches as patches
+from pprint import pprint
+import sys
+from matplotlib.lines import Line2D
 
 def GMM_removal(video_path, output_path, variance, history, run=False):
     
@@ -56,7 +59,7 @@ def GMM_removal(video_path, output_path, variance, history, run=False):
     else:
         pass
 
-def average_background_removal(video_path, output_path, history, run=False):
+def average_background_removal(video_path, output_path, history, column_change, run=False):
     
     if run:
         
@@ -64,7 +67,7 @@ def average_background_removal(video_path, output_path, history, run=False):
         video_source = cv2.VideoCapture(video_path)
         
         # Step 1: Accumulate frames for background generation
-        num_background_frames = 100  # Specify the number of frames to use for background generation
+        num_background_frames = column_change  # Specify the number of frames to use for background generation
         background_frames = []
         frame_count = 0
         
@@ -85,7 +88,7 @@ def average_background_removal(video_path, output_path, history, run=False):
         fps = video_source.get(cv2.CAP_PROP_FPS)
         frame_size = (int(video_source.get(cv2.CAP_PROP_FRAME_WIDTH)), int(video_source.get(cv2.CAP_PROP_FRAME_HEIGHT)))
        
-        fourcc = cv2.VideoWriter_fourcc(0x00000021)
+        fourcc = cv2.VideoWriter_fourcc(*'MJPG')
         # Create VideoWriter object to save the processed video
         output_video = cv2.VideoWriter(output_path, fourcc, fps, frame_size, True)
         
@@ -94,6 +97,7 @@ def average_background_removal(video_path, output_path, history, run=False):
             if not success:
                 break
         
+
             # Subtract the average background from each frame
             subtracted_frame = cv2.absdiff(frame, average_background)
         
@@ -106,23 +110,27 @@ def average_background_removal(video_path, output_path, history, run=False):
             # Convert back to BGR for writing
             hstacked_frames_bgr = cv2.cvtColor(hstacked_frames, cv2.COLOR_GRAY2BGR)
         
+            last_frame = gray_subtracted_frame
+
             cv2.imshow("Original vs Subtracted", hstacked_frames)
         
             # Write the processed frame to the output video file
-            output_video.write(hstacked_frames_bgr)
+            output_video.write(gray_subtracted_frame)
+            
         
             if cv2.waitKey(30) == ord("q"):
-                break
+                 break
         
         # Release video source and output video
         video_source.release()
         output_video.release()
         
         cv2.destroyAllWindows()
+        return last_frame
     else:
         pass      
     
-def first_frame(video_path, run=False):
+def video_info(video_path, run=False):
     
     if run:
         
@@ -131,67 +139,28 @@ def first_frame(video_path, run=False):
         
         #read first frame
         success, frame = video.read()
-        
-        #release video
-        video.release()
-        
-        if success:
-            ret, thresh = cv2.threshold(frame, 150, 255, cv2.THRESH_BINARY)
-            img_normalized = cv2.normalize(thresh, None, 0, 1.0, cv2.NORM_MINMAX, dtype=cv2.CV_32F)
-            cv2.imshow('Normalized image', img_normalized)
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
-            return img_normalized, frame
-        else: 
-            return None
-    else:
-        #open video file
-        video = cv2.VideoCapture(video_path)
-        
-        #read first frame
-        success, frame = video.read()
-        
-        #release video
-        video.release()
-        return frame, frame
-    
-def detect_center(img_normalized,frame, run=False):
-    
-    if run:
-        img_normalized = cv2.cvtColor(img_normalized, cv2.COLOR_BGR2GRAY)
-        ind = np.unravel_index(np.argmax(img_normalized, axis=None), img_normalized.shape)
-        print(ind)
-        y, x, *rest = ind
-        center_coords = (x, y)
-        print(center_coords)
-        image = cv2.circle(frame, center_coords, 10, (255, 0, 0), -1)
-        cv2.imshow("detected", image)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-        
-        skel = skeletonize(frame)
-        fig, axes = plt.subplots(1, 2, sharex=True, sharey=True)
-        axes[0].imshow(frame, cmap='gray')
-        axes[0].set_title('Raw')
-        axes[1].imshow(skel, cmap='gray')
-        axes[1].set_title('Skeleton')
-        plt.show()
-        return center_coords
-    else:
-        height, width, channels = img_normalized.shape
-        center_coords = (width/2, height/2)
-        return center_coords
-    
-def image_profile(video_path, center_coords, num_angles, run = False):
-    
-    if run:
-        # Open video file
-        video = cv2.VideoCapture(video_path)
         fps = video.get(cv2.CAP_PROP_FPS)
     
         # Get the total number of frames in the video
         total_frames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
-        print("total Frames", total_frames)
+        
+        height, width, channels = frame.shape
+        center_coords = (width/2, height/2)
+        #release video
+        video.release()
+        
+
+        return frame, fps, total_frames, center_coords
+
+    else:
+        pass 
+    
+def image_profile(video_path, center_coords, num_angles, total_frames, run = False):
+    
+    if run:
+        # Open video file
+        video = cv2.VideoCapture(video_path)
+    
         matrices = []
         angles = []
     
@@ -228,19 +197,18 @@ def image_profile(video_path, center_coords, num_angles, run = False):
         # Release the video capture
         video.release()
     
-        return matrices, angles, fps
+        return matrices, angles
     else:
         pass
     return 0, 0, 0
 
-def visualize_data(profiles, angles, fps, plot=False, run=False):
+def visualize_data(profiles, angles, fps, col_change, last_frame, plot=False, run=False):
     
     if run:
         
         rms_values_list = []  # List to store RMS values for each column
         avg_rms_before_list = []  # List to store average RMS before values
         avg_rms_after_list = []  # List to store average RMS after values
-    
         for i, prof in enumerate(profiles):
             
             prof = prof.transpose()
@@ -265,7 +233,7 @@ def visualize_data(profiles, angles, fps, plot=False, run=False):
     
     
             # Assuming 'profile_matrix' is your profile matrix
-            change_column_idx = detect_change_column(prof)
+            change_column_idx = col_change
             print("Visualize data", change_column_idx)
             
             slice_of_frame_before = []
@@ -275,6 +243,7 @@ def visualize_data(profiles, angles, fps, plot=False, run=False):
                 # Average the FFT plots before and after the change index
                 fft_before = np.mean(fft_matrix[:, :change_column_idx], axis=1)
                 fft_after = np.mean(fft_matrix[:, change_column_idx:], axis=1)
+                
                 
                 # Average the RMS values before and after the change index
                 avg_rms_before = calculate_rms(rms_values[:change_column_idx], 5)
@@ -292,7 +261,7 @@ def visualize_data(profiles, angles, fps, plot=False, run=False):
                     fig = plt.figure(figsize=(10, 5))
                     
                     # Plot the time domain profile
-                    plt.subplot(2,2,1)
+                    plt.subplot(2,3,1)
                     plt.imshow(prof, cmap='plasma', interpolation='nearest', aspect='auto')
                     plt.title(f"Time Domain - Angle: {angles[i]}")
                     plt.xlabel('Frame Index')
@@ -305,7 +274,7 @@ def visualize_data(profiles, angles, fps, plot=False, run=False):
                     
                     
                     #spectrogram
-                    plt.subplot(2,2,2)
+                    plt.subplot(2,3,2)
                     plt.imshow(fft_matrix_log, cmap='plasma', interpolation='nearest', aspect='auto')
                     plt.title(f"Freq Domain - Angle: {angles[i]}")
                     plt.xlabel('Frame Index')
@@ -317,29 +286,59 @@ def visualize_data(profiles, angles, fps, plot=False, run=False):
                     # Show the plot
                     plt.show()
                     
-                    plt.subplot(2,2,3)
+                    plt.subplot(2,3,3)
                     prof=prof.transpose()
+                    p=0
                     for col in prof:
-                        plt.plot(col, alpha=0.5)
+                        if p < change_column_idx:
+                            plt.plot(col, color="red", alpha=0.01)
+                            p +=1
+                        else:
+                            plt.plot(col, color="blue", alpha=0.01 )
+                            p += 1
+                                
                     plt.title(f"Angle: {angles[i]}")
                     plt.xlabel('Pixel')
                     plt.ylabel('Intensity')
+                    # Set custom colors for the legend
+                    legend_labels = ["Untrapped", "Trapped"]
+                    legend_colors = ['red', 'blue']
+                    
+                    legend_lines = [Line2D([0], [0], color=color, linewidth=1.5) for color in legend_colors]
+
+                    # Create the legend with custom labels and colors
+                    plt.legend(legend_lines, legend_labels, facecolor='white',loc='best', 
+                               bbox_to_anchor=(1, 1), labelcolor='black')                   
                     plt.show()
                     
                     # Plot the averaged FFT plots
-                    plt.subplot(2,2,4)
+                    plt.subplot(2,3,4)
                     plt.plot(fft_before, label='Untrapped', color='red')
                     plt.plot(fft_after, label='Trapped', color='blue')
-                    plt.title(f"Averaged 1D FFT - Angle: {angles[i]}, Frame: {change_column_idx}")
+                    plt.title(f"Averaged 1D FFT - Angle: {angles[i]}")
                     plt.xlabel('Frequency')
                     plt.ylabel('Magnitude')
-                    plt.xlim(0, 200)  # Set the y-axis limits to 0 and 200 Hz
+                    plt.xlim(8, 130)  # Set the y-axis limits to 0 and 200 Hz
                     plt.legend()
                     plt.show()
                     plt.tight_layout()
                     
+                    plt.subplot(2,3,5)
+                    plt.plot(fft_after-fft_before, color='black')
+                    plt.title(f"FFT Difference - Angle: {angles[i]}")
+                    plt.xlabel('Frequency')
+                    plt.ylabel('Magnitude')
+                    plt.xlim([0, 200])
+                    plt.show()
+                    plt.tight_layout()
+                    
+                    normalized_frame = last_frame.astype(float) / np.max(last_frame)
 
-
+                    plt.subplot(2,3,6)
+                    plt.imshow(normalized_frame)  # Convert BGR to RGB for matplotlib
+                    plt.axis('off')  # Hide the axes
+                    plt.show()
+                    plt.tight_layout()
                 else:
                     pass
                 
@@ -358,22 +357,27 @@ def visualize_data(profiles, angles, fps, plot=False, run=False):
     
     return 
 
-def detect_change_column(profiles):
+def detect_change_column(video_path, center_coords, total_frames):
     
-    num_cols = profiles.shape[1]
-    noise_range = slice(560, 601)  # Rows range to calculate noise change
+    profiles, angles = image_profile(video_path, center_coords, 1, total_frames, run=True)
+    
+    
+    num_cols = len(profiles[0])
+    #print(num_cols)
+    profiles = np.array(profiles)
+    noise_range = slice(center_coords[0]-50, center_coords[0]+50)  # Rows range to calculate noise change
 
-    prev_noise_std = np.std(profiles[noise_range, 0])
-
-    for col_idx in range(1, num_cols):
-        curr_noise_std = np.std(profiles[noise_range, col_idx])
-
-        if np.abs(curr_noise_std - prev_noise_std) >= 0.1 * prev_noise_std:
-            print("col idx", col_idx)
-            return col_idx
-
-        prev_noise_std = curr_noise_std
-
+    row_std = np.std(profiles[0, :, noise_range], axis=1)
+    prev_std = row_std[0]  # Initialize the previous standard deviation
+    for i in range(1, len(row_std)):
+        curr_std = row_std[i]
+    
+        if np.abs(curr_std - prev_std) >= 0.1 * prev_std:
+            print("Row index:", i)
+            return i
+            # Perform additional actions if needed
+    
+        prev_std = curr_std
     return None
 
 def calculate_rms(signal, window_length):
@@ -403,10 +407,9 @@ def calculate_rms(signal, window_length):
 
     return average_rms
 
-def compute_optical_flow(video_path, region_size, run=False):
+def compute_optical_flow(video_path, region_size, total_frames, col_idx, run=False):
     
     if run:
-        
         cap = cv2.VideoCapture(video_path)
         
         # Read the first frame
@@ -418,13 +421,8 @@ def compute_optical_flow(video_path, region_size, run=False):
         center_x = width // 2
         center_y = height // 2
         
-        matrix, angle, fps = image_profile(video_path, (center_x, center_y), 1, run=True)
-        for i, prof in enumerate(matrix):
-            
-            #get the profile matrix for column index
-            col_idx = detect_change_column(prof.transpose())
-            print("column index optical flow", col_idx)
-      
+        matrix, angle = image_profile(video_path, (center_x, center_y), 1, total_frames, run=True)
+              
         # Initialize an empty array to store net movements
         net_movements = []
         # Initialize empty lists to store net movements before and after the split index
@@ -476,8 +474,7 @@ def compute_optical_flow(video_path, region_size, run=False):
             prev_gray = next_gray
         
         
-        print("Full movement", full_movements)
-        print("ROI movement", net_movement)
+
         
         # Convert the net movements lists to numpy arrays
         net_movements_before = np.array(net_movements_before)
@@ -493,10 +490,11 @@ def compute_optical_flow(video_path, region_size, run=False):
         
         
         # Normalize the net movements based on the region size
-        full_movement_before
-        full_movement_after
+        full_movement_before /= width
+        full_movement_after /= width
         
-
+        #print("Full movement", full_movements)
+        #print("ROI movement", net_movements)
         
         
         # Calculate the offset to position the scatter plot at the center of the canvas
@@ -569,6 +567,7 @@ def main():
     root = tk.Tk()
     root.withdraw()
 
+    np.set_printoptions(threshold=sys.maxsize)
     # Prompt the user to select the input video file
     video_path = filedialog.askopenfilename(filetypes=[("Video Files", "*.mp4")])
     if not video_path:
@@ -583,37 +582,42 @@ def main():
     output_filename = os.path.splitext(filename)[0] + "_removed.mp4"
     output_path = os.path.join(directory, output_filename)
     
-    #optical flow
-    region_size = 50
-    compute_optical_flow(video_path, region_size, run=True)
     
+############################################# Video Information #######################################################################
+    frame, fps, total_frames, center = video_info(video_path, run=True)
+    center_coords_int = (int(center[0]), int(center[1]))
+######################################################################################################################################################
+    
+######################################### Detect CHanges###########################################################################
+    column_change = detect_change_column(video_path, center_coords_int, total_frames)
+    column_change = 13*12
+######################################################################################################################################################
+
+    ######################## optical flow #####################################
+    region_size = 50
+    compute_optical_flow(video_path, region_size, total_frames,column_change, run=True)
+######################################################################################################################################################
+    
+    
+############################## Background removal ###################################################################################
     #GMM PARAMS
     variance = 40
     history = 100
-
     # Perform background subtraction and write the output video
     GMM_removal(video_path, output_path, variance, history, run=False)
-    average_background_removal(video_path, output_path, history, run=False)
+    last_frame = average_background_removal(video_path, output_path, history, column_change, run=True)
+######################################################################################################################################################
 
-    #find centers but maybe just manually do when editing videos
-    img_normalized, frame = first_frame(video_path, run=False)
-    center = detect_center(img_normalized, frame, run=False)
 
-    center_coordinates = center  # Specify the center coordinates
-    center_coords_int = (int(center_coordinates[0]), int(center_coordinates[1]))
+##################################### ANALYSIS ########################################################################################
     num_angle_increments = 4 # Specify the number of angle increments
-    
-    profiles, angles, fps = image_profile(video_path, center_coords_int, num_angle_increments, run = True)
+    profiles, angles = image_profile(video_path, center_coords_int, num_angle_increments, total_frames, run = True)
     #print(profiles)
-    visualize_data(profiles, angles, fps, plot=True, run=True)
+    visualize_data(profiles, angles, fps,column_change, last_frame, plot=True, run=True)
     #needs to do this for avg rms
     profiles = np.array(profiles)
+######################################################################################################################################################
 
-
-
-
-
-    # Process or analyze the profiles as needed
 
 
 
