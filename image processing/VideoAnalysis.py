@@ -14,6 +14,13 @@ import matplotlib.patches as patches
 from pprint import pprint
 import sys
 from matplotlib.lines import Line2D
+import seaborn as sns
+import re
+import pandas as pd
+import scipy.stats as stats
+from matplotlib.patches import Ellipse
+import matplotlib.transforms as transforms
+from scipy.optimize import curve_fit
 
 def GMM_removal(video_path, output_path, variance, history, run=False):
     
@@ -200,7 +207,7 @@ def image_profile(video_path, center_coords, num_angles, total_frames, run = Fal
         return matrices, angles
     else:
         pass
-    return 0, 0, 0
+    return 0, 0
 
 def visualize_data(profiles, angles, fps, col_change, last_frame, plot=False, run=False):
     
@@ -407,7 +414,59 @@ def calculate_rms(signal, window_length):
 
     return average_rms
 
-def compute_optical_flow(video_path, region_size, total_frames, col_idx, run=False):
+def confidence_ellipse(x, y, ax, n_std=3.0, facecolor='none', **kwargs):
+    """
+    Create a plot of the covariance confidence ellipse of *x* and *y*.
+
+    Parameters
+    ----------
+    x, y : array-like, shape (n, )
+        Input data.
+
+    ax : matplotlib.axes.Axes
+        The axes object to draw the ellipse into.
+
+    n_std : float
+        The number of standard deviations to determine the ellipse's radiuses.
+
+    **kwargs
+        Forwarded to `~matplotlib.patches.Ellipse`
+
+    Returns
+    -------
+    matplotlib.patches.Ellipse
+    """
+    if x.size != y.size:
+        raise ValueError("x and y must be the same size")
+
+    cov = np.cov(x, y)
+    pearson = cov[0, 1]/np.sqrt(cov[0, 0] * cov[1, 1])
+    # Using a special case to obtain the eigenvalues of this
+    # two-dimensional dataset.
+    ell_radius_x = np.sqrt(1 + pearson)
+    ell_radius_y = np.sqrt(1 - pearson)
+    ellipse = Ellipse((0, 0), width=ell_radius_x * 2, height=ell_radius_y * 2,
+                      facecolor=facecolor, **kwargs)
+
+    # Calculating the standard deviation of x from
+    # the squareroot of the variance and multiplying
+    # with the given number of standard deviations.
+    scale_x = np.sqrt(cov[0, 0]) * n_std
+    mean_x = np.mean(x)
+
+    # calculating the standard deviation of y ...
+    scale_y = np.sqrt(cov[1, 1]) * n_std
+    mean_y = np.mean(y)
+
+    transf = transforms.Affine2D() \
+        .rotate_deg(45) \
+        .scale(scale_x, scale_y) \
+        .translate(mean_x, mean_y)
+
+    ellipse.set_transform(transf + ax.transData)
+    return ax.add_patch(ellipse)
+
+def compute_optical_flow(video_path, region_size, total_frames, col_idx,filename, plot=True, run=False):
     
     if run:
         cap = cv2.VideoCapture(video_path)
@@ -475,12 +534,12 @@ def compute_optical_flow(video_path, region_size, total_frames, col_idx, run=Fal
         
         
 
-        
         # Convert the net movements lists to numpy arrays
         net_movements_before = np.array(net_movements_before)
         net_movements_after = np.array(net_movements_after)
         
-        # Convert the full movements lists to numpy arrays
+        #print("np array", net_movements_after)
+        # # Convert the full movements lists to numpy arrays
         full_movement_before = np.array(full_movement_before)
         full_movement_after = np.array(full_movement_after)
         
@@ -496,83 +555,225 @@ def compute_optical_flow(video_path, region_size, total_frames, col_idx, run=Fal
         #print("Full movement", full_movements)
         #print("ROI movement", net_movements)
         
+        r_center, p_center = stats.pearsonr(net_movements_after[:, 0], net_movements_after[:, 1])
+        r_full, p_full = stats.pearsonr(full_movement_after[:, 0], full_movement_after[:, 1])
         
         # Calculate the offset to position the scatter plot at the center of the canvas
         offset_x = center_x #- region_size // 2
         offset_y = center_y #- region_size // 2
     
-        # Plot the net movements on the canvas
-        plt.figure()
-        # Plot the net movements before the split index in red
-        plt.scatter(net_movements_before[:, 0] + offset_x, net_movements_before[:, 1] + offset_y, color='red', alpha=0.25,label='Untrapped')
-        # Plot the net movements after the split index in blue
-        plt.scatter(net_movements_after[:, 0] + offset_x, net_movements_after[:, 1] + offset_y, color='blue', alpha=0.25,label='Trapped')
-        # Overlay the scatter plot on the last frame of the video
-        plt.imshow(cv2.cvtColor(prev_frame, cv2.COLOR_BGR2RGB))
-        # Get the current reference
-        ax = plt.gca()
+        # # Plot the net movements on the canvas
+        # plt.figure()
+        # # Plot the net movements before the split index in red
+        # plt.scatter(net_movements_before[:, 0] + offset_x, net_movements_before[:, 1] + offset_y, color='red', alpha=0.25,label='Untrapped')
+        # # Plot the net movements after the split index in blue
+        # plt.scatter(net_movements_after[:, 0] + offset_x, net_movements_after[:, 1] + offset_y, color='blue', alpha=0.25,label='Trapped')
+        # # Overlay the scatter plot on the last frame of the video
+        # plt.imshow(cv2.cvtColor(prev_frame, cv2.COLOR_BGR2RGB))
+        # # Get the current reference
+        # ax = plt.gca()
         
-        # Create a Rectangle patch
-        rect = patches.Rectangle((center_x - region_size // 2,center_y - region_size // 2),region_size,region_size,linewidth=1,edgecolor='r',facecolor='none')
+        # # Create a Rectangle patch
+        # rect = patches.Rectangle((center_x - region_size // 2,center_y - region_size // 2),region_size,region_size,linewidth=1,edgecolor='r',facecolor='none')
         
-        # Add the patch to the Axes
-        ax.add_patch(rect)
-        plt.xlabel('Net Movement in X direction')
-        plt.ylabel('Net Movement in Y direction')
-        plt.title('Optical Flow: Net Movement Scatter Plot')
-        plt.show()
+        # # Add the patch to the Axes
+        # ax.add_patch(rect)
+        # plt.xlabel('Net Movement in X direction')
+        # plt.ylabel('Net Movement in Y direction')
+        # plt.title('Optical Flow: Net Movement Scatter Plot')
+        # plt.show()
         
-        fig = plt.figure()
+        if plot:
+            
+            # fig = plt.figure()
+            
+            # ax = fig.add_subplot() 
+            # # square plot
+            # # Plot the net movements before the split index in red
+            # plt.scatter(net_movements_before[:, 0] , net_movements_before[:, 1], color='red', alpha=0.3,label='Untrapped')
+            # # Plot the net movements after the split index in blue
+            # plt.scatter(net_movements_after[:, 0], net_movements_after[:, 1], color='blue', alpha=0.3,label='Trapped')
+            # # Overlay the scatter plot on the last frame of the video
+            # plt.xlabel('Net Movement in X direction')
+            # plt.ylabel('Net Movement in Y direction')
+            # plt.title('Optical Flow: Net Movement Scatter Plot Center ROI')
+            # plt.grid()
+            # plt.legend()
+            # ax.set_aspect('equal', adjustable='box')
+            # plt.show()
+            
+            # Define the linear function
+            def linear_func(x, m, c):
+                return m * x + c
+            
+            # Fit the data to the linear function
+            params, _ = curve_fit(linear_func, net_movements_after[:, 0], net_movements_after[:, 1])
+            
+            # Get the slope and intercept
+            slope = params[0]
+            intercept = params[1]
+            
+            # Calculate the angle
+            angle_rad = np.arctan(slope)
+            angle_deg = np.degrees(angle_rad)
+            angle_deg = '%.3f'%(angle_deg)
+
+            
+            fig = plt.figure(figsize = (5,3))
+            r_center = '%.3f'%(r_center)
+            ax = fig.add_subplot() 
+            # square plot
+            # Plot the net movements after the split index in blue
+            plt.scatter(net_movements_after[:, 0], net_movements_after[:, 1], color='blue', alpha=0.3)
+            # Overlay the scatter plot on the last frame of the video
+            plt.xlabel('X')
+            plt.ylabel('Y')
+            plt.title(f"Optical Flow: Center ROI {filename}")
+            plt.grid()
+            plt.xlim([-175, 175])
+            plt.ylim([-75, 75])
+            annotation_text = f"r = {r_center}, Θ = {angle_deg}"
+            annotation_box_props = dict(boxstyle='round', facecolor='white', edgecolor='black')
+            
+            plt.annotate(annotation_text, xy=(-150, 55), weight='bold', bbox=annotation_box_props)
+            
+            #plt.legend()
+            ax.set_aspect('equal', adjustable='box')
+            plt.show()
+            
+            
+            r_full = '%.3f'%(r_full)
+            fig = plt.figure(figsize=(3, 3))
+            
+            # Fit the data to the linear function
+            params2, _ = curve_fit(linear_func, full_movement_after[:, 0], full_movement_after[:, 1])
+            
+            # Get the slope and intercept
+            slope2 = params2[0]
+            intercept2 = params2[1]
+            
+            # Calculate the angle
+            angle_rad2 = np.arctan(slope2)
+            angle_deg2 = np.degrees(angle_rad2)
+            angle_deg2 = '%.3f'%(angle_deg2)
+            
+            ax = fig.add_subplot()
+            # square plot
+            # Plot the net movements after the split index in blue
+            plt.scatter(full_movement_after[:, 0], full_movement_after[:, 1], color='blue', alpha=0.3)
+            # Overlay the scatter plot on the last frame of the video
+            plt.xlabel('X ')
+            plt.ylabel('Y ')
+            plt.title(f"Optical Flow: Full ROI {filename}")
+            plt.grid()
+            plt.xlim([-30, 30])
+            plt.ylim([-30, 30])
+            
+            annotation_text = f"r = {r_full}, Θ = {angle_deg2}"
+            annotation_box_props = dict(boxstyle='round', facecolor='white', edgecolor='black')
+            
+            plt.annotate(annotation_text, xy=(-25, 25), weight='bold', bbox=annotation_box_props)
+            
+            ax.set_aspect('equal', adjustable='box')
+            plt.show()
+            
+            # fig = plt.figure()
+            
+            # ax = fig.add_subplot() 
+            # # square plot
+            # # Plot the net movements before the split index in red
+            # plt.scatter(full_movement_before[:, 0] , full_movement_before[:, 1], color='red', alpha=0.3,label='Untrapped')
+            # # Plot the net movements after the split index in blue
+            # plt.scatter(full_movement_after[:, 0], full_movement_after[:, 1], color='blue', alpha=0.3,label='Trapped')
+            # # Overlay the scatter plot on the last frame of the video
+            # plt.xlabel('Net Movement in X direction')
+            # plt.ylabel('Net Movement in Y direction')
+            # plt.title('Optical Flow: Net Movement Scatter Plot Full ROI')
+            # plt.grid()
+            # plt.legend()
+            # ax.set_aspect('equal', adjustable='box')
+            # plt.show()
+            
+            cap.release()
+        else:
+            pass
         
-        ax = fig.add_subplot() 
-        # square plot
-        # Plot the net movements before the split index in red
-        plt.scatter(net_movements_before[:, 0] , net_movements_before[:, 1], color='red', alpha=0.3,label='Untrapped')
-        # Plot the net movements after the split index in blue
-        plt.scatter(net_movements_after[:, 0], net_movements_after[:, 1], color='blue', alpha=0.3,label='Trapped')
-        # Overlay the scatter plot on the last frame of the video
-        plt.xlabel('Net Movement in X direction')
-        plt.ylabel('Net Movement in Y direction')
-        plt.title('Optical Flow: Net Movement Scatter Plot Center ROI')
-        plt.grid()
-        plt.legend()
-        ax.set_aspect('equal', adjustable='box')
-        plt.show()
-        
-        
-        fig = plt.figure()
-        
-        ax = fig.add_subplot() 
-        # square plot
-        # Plot the net movements before the split index in red
-        plt.scatter(full_movement_before[:, 0] , full_movement_before[:, 1], color='red', alpha=0.3,label='Untrapped')
-        # Plot the net movements after the split index in blue
-        plt.scatter(full_movement_after[:, 0], full_movement_after[:, 1], color='blue', alpha=0.3,label='Trapped')
-        # Overlay the scatter plot on the last frame of the video
-        plt.xlabel('Net Movement in X direction')
-        plt.ylabel('Net Movement in Y direction')
-        plt.title('Optical Flow: Net Movement Scatter Plot Full ROI')
-        plt.grid()
-        plt.legend()
-        ax.set_aspect('equal', adjustable='box')
-        plt.show()
-        
-        cap.release()
+        return net_movements_after, full_movement_after
     else:
-        pass
+        return 0, 0
     
+def hist(x, y, filename, toggle = False):
+    
+    # Create histograms
+    bins = 30  # Number of bins for the histograms
+    # Histogram for x data
+    x_hist, x_bins, _ = plt.hist(x, bins=bins, alpha=0.5, label='X')
+    
+    # Histogram for y data
+    y_hist, y_bins, _ = plt.hist(y, bins=bins, alpha=0.5, label='Y')
+    
+    # Calculate FWHM for x data
+    x_peak = x_bins[np.argmax(x_hist)]  # Find the peak bin
+    x_half_max = np.max(x_hist) / 2  # Calculate half of the maximum bin value
+    x_left_idx = np.where(x_hist[:np.argmax(x_hist)] <= x_half_max)[0][-1]  # Left index of half-max bin
+    x_right_idx = np.where(x_hist[np.argmax(x_hist):] <= x_half_max)[0][0] + np.argmax(x_hist)  # Right index of half-max bin
+    x_fwhm = x_bins[x_right_idx] - x_bins[x_left_idx]  # FWHM for x data
+    
+    # Calculate FWHM for y data
+    y_peak = y_bins[np.argmax(y_hist)]  # Find the peak bin
+    y_half_max = np.max(y_hist) / 2  # Calculate half of the maximum bin value
+    y_left_idx = np.where(y_hist[:np.argmax(y_hist)] <= y_half_max)[0][-1]  # Left index of half-max bin
+    y_right_idx = np.where(y_hist[np.argmax(y_hist):] <= y_half_max)[0][0] + np.argmax(y_hist)  # Right index of half-max bin
+    y_fwhm = y_bins[y_right_idx] - y_bins[y_left_idx]  # FWHM for y data
 
-def main():
-    # Create a Tkinter root window
-    root = tk.Tk()
-    root.withdraw()
+    
+    
+    if toggle:
+    
+        # Print the FWHM values
+        print("FWHM for X datac center:", x_fwhm, ' ', filename)
+        print("FWHM for Y data center:", y_fwhm, ' ', filename)
+    else:
+        # Print the FWHM values
+        print("FWHM for X datac full:", x_fwhm, ' ', filename)
+        print("FWHM for Y data full:", y_fwhm, ' ', filename)    
 
-    np.set_printoptions(threshold=sys.maxsize)
-    # Prompt the user to select the input video file
-    video_path = filedialog.askopenfilename(filetypes=[("Video Files", "*.mp4")])
-    if not video_path:
-        print("No video file selected.")
-        return
+    
+# Create a Tkinter root window
+root = tk.Tk()
+root.withdraw()
+
+center_trap = []
+full_trap = []
+names = []
+
+dfs = []
+
+bsa_pearson_center_r = []
+ca_pearson_center_r = []
+ctc_pearson_center_r = []
+
+bsa_pearson_full_r = []
+ca_pearson_full_r = []
+ctc_pearson_full_r = []
+
+bsa_pearson_center_p = []
+ca_pearson_center_p = []
+ctc_pearson_center_p = []
+
+bsa_pearson_full_p = []
+ca_pearson_full_p = []
+ctc_pearson_full_p = []
+
+
+np.set_printoptions(threshold=sys.maxsize)
+# Prompt the user to select the input video file
+video_paths = filedialog.askopenfilenames(filetypes=[("Video Files", "*.mp4")])
+if not video_paths:
+    print("No video file selected.")
+
+
+for video_path in video_paths:
 
     # Extract the directory and filename from the video path
     directory = os.path.dirname(video_path)
@@ -589,37 +790,153 @@ def main():
 ######################################################################################################################################################
     
 ######################################### Detect CHanges###########################################################################
-    column_change = detect_change_column(video_path, center_coords_int, total_frames)
-    column_change = 13*12
+    #column_change = detect_change_column(video_path, center_coords_int, total_frames)
+    column_change = 1
 ######################################################################################################################################################
 
     ######################## optical flow #####################################
     region_size = 50
-    compute_optical_flow(video_path, region_size, total_frames,column_change, run=True)
+    net_movement_after, full_movement_after = compute_optical_flow(video_path, region_size, total_frames,column_change, filename, run=True)
 ######################################################################################################################################################
-    
-    
+
+        
 ############################## Background removal ###################################################################################
     #GMM PARAMS
     variance = 40
     history = 100
     # Perform background subtraction and write the output video
     GMM_removal(video_path, output_path, variance, history, run=False)
-    last_frame = average_background_removal(video_path, output_path, history, column_change, run=True)
+    last_frame = average_background_removal(video_path, output_path, history, column_change, run=False)
 ######################################################################################################################################################
 
 
 ##################################### ANALYSIS ########################################################################################
     num_angle_increments = 4 # Specify the number of angle increments
-    profiles, angles = image_profile(video_path, center_coords_int, num_angle_increments, total_frames, run = True)
+    profiles, angles = image_profile(video_path, center_coords_int, num_angle_increments, total_frames, run = False)
     #print(profiles)
-    visualize_data(profiles, angles, fps,column_change, last_frame, plot=True, run=True)
+    visualize_data(profiles, angles, fps,column_change, last_frame, plot=False, run=False)
     #needs to do this for avg rms
     profiles = np.array(profiles)
 ######################################################################################################################################################
+#print(center_trap)
 
+    r_center, p_center = stats.pearsonr(net_movement_after[:, 0], net_movement_after[:, 1])
+    r_full, p_full = stats.pearsonr(full_movement_after[:, 0], full_movement_after[:, 1])
 
+    
 
+    # Remove ".mp4" extension
+    filename = re.sub(r"\.mp4$", "", filename)
+    # Remove numbers and dashes
+    filename = re.sub(r"[\d-]", "", filename)  
+    
+    if filename == 'BSA':
+        bsa_pearson_center_r.append(r_center)
+        bsa_pearson_full_r.append(r_full)
+        
+        bsa_pearson_center_p.append(p_center)
+        bsa_pearson_full_p.append(p_full)
+        
+    elif filename == 'CA':
+        ca_pearson_center_r.append(r_center)
+        ca_pearson_full_r.append(r_full)
+        
+        ca_pearson_center_p.append(p_center)
+        ca_pearson_full_p.append(p_full)
+    elif filename == 'CTC':
+        ctc_pearson_center_r.append(r_center)
+        ctc_pearson_full_r.append(r_full)
+        
+        ctc_pearson_center_p.append(p_center)
+        ctc_pearson_full_p.append(p_full)
 
-if __name__ == "__main__":
-    main()
+    
+    center_trap.append(net_movement_after)
+    full_trap.append(full_movement_after)
+    
+    
+    # Create a DataFrame for the current file's scatter plot data
+    scatter_data = {
+        'x': net_movement_after[:, 0],
+        'y': net_movement_after[:, 1],
+        'full_x': full_movement_after[:,0],
+        'full_y': full_movement_after[:,1],
+        'protein': filename
+    }
+    df = pd.DataFrame(scatter_data)
+
+    # Append the DataFrame to the list
+    dfs.append(df)
+    
+    
+    # hist(net_movement_after[:, 0], net_movement_after[:, 1], filename, toggle = True)
+    # hist(full_movement_after[:, 0], full_movement_after[:, 1], filename, toggle = False)
+
+bsa_r_avg_center = np.mean(bsa_pearson_center_r)
+bsa_p_avg_center = np.mean(bsa_pearson_center_p)
+
+ca_r_avg_center = np.mean(ca_pearson_center_r)
+ca_p_avg_center = np.mean(ca_pearson_center_p)
+
+ctc_r_avg_center = np.mean(ctc_pearson_center_r)
+ctc_p_avg_center = np.mean(ctc_pearson_center_p)
+
+bsa_r_avg_full = np.mean(bsa_pearson_full_r)
+bsa_p_avg_full = np.mean(bsa_pearson_full_p)
+
+ca_r_avg_full = np.mean(ca_pearson_full_r)
+ca_p_avg_full = np.mean(ca_pearson_full_p)
+
+ctc_r_avg_full = np.mean(ctc_pearson_full_r)
+ctc_p_avg_full = np.mean(ctc_pearson_full_p)
+
+# Concatenate all DataFrames into a single DataFrame
+combined_df = pd.concat(dfs, ignore_index=True)
+# Assuming combined_df is the pandas DataFrame containing the combined scatter plot data
+g = sns.jointplot(data=combined_df, x='x', y='y', hue='protein', kind='scatter', palette='Set1', alpha=0.1)
+g.ax_joint.annotate(f'$r = {bsa_r_avg_center:.3f}, p = {bsa_p_avg_center:.3f}$',
+                    xy=(0.05, 0.83), xycoords='axes fraction',
+                    ha='left', va='center',
+                    bbox={'boxstyle': 'round', 'fc': '#0cdc73', 'ec': '#048243'})
+g.ax_joint.annotate(f'$r = {ca_r_avg_center:.3f}, p = {ca_p_avg_center:.3f}$',
+                    xy=(0.05, 0.89), xycoords='axes fraction',
+                    ha='left', va='center',
+                    bbox={'boxstyle': 'round', 'fc': 'powderblue', 'ec': 'navy'})
+g.ax_joint.annotate(f'$r = {ctc_r_avg_center:.3f}, p = {ctc_p_avg_center:.3f}$',
+                    xy=(0.05, 0.95), xycoords='axes fraction',
+                    ha='left', va='center',
+                    bbox={'boxstyle': 'round', 'fc': '#fc5a50', 'ec': '#9a0200'})
+
+#sns.jointplot(data=combined_df, x='x', y='y', hue='protein', kind='kde', palette='Set1')
+# Show the plot
+#sns.jointplot(data=combined_df, x='x', y='y', hue='protein', kind='hist', palette='Set1')
+# Show the plot
+
+# sns.violinplot(data=combined_df, x='x', y='protein', palette='Set1', bw=10, alpha=0.1)
+# sns.violinplot(data=combined_df, x='y', y='protein', palette='Set1', bw=10)
+# sns.violinplot(data=combined_df, x='full_x', y='protein', palette='Set1', bw=10)
+# sns.violinplot(data=combined_df, x='full_y', y='protein', palette='Set1', bw=10)
+
+# sns.kdeplot(data=combined_df, x='x', hue='protein', palette='Set1', fill=True, bw_adjust=10, common_norm=False, alpha=0.5, linewidth=0.5)
+# sns.kdeplot(data=combined_df, x='y', hue='protein', palette='Set1', fill=True, bw_adjust=10, common_norm=False, alpha=0.5, linewidth=0.5)
+# sns.kdeplot(data=combined_df, x='full_x', hue='protein', palette='Set1', fill=True, bw_adjust=10, common_norm=False, alpha=0.5, linewidth=0.5)
+# sns.kdeplot(data=combined_df, x='full_y', hue='protein', palette='Set1', fill=True, bw_adjust=10, common_norm=False, alpha=0.5, linewidth=0.5)
+
+j = sns.jointplot(data=combined_df, x='full_x', y='full_y', hue='protein', kind='scatter', palette='Set1', alpha=0.1)
+j.ax_joint.annotate(f'$r = {bsa_r_avg_full:.3f}, p = {bsa_p_avg_full:.3f}$',
+                    xy=(0.05, 0.83), xycoords='axes fraction',
+                    ha='left', va='center',
+                    bbox={'boxstyle': 'round', 'fc': '#0cdc73', 'ec': '#048243'})
+j.ax_joint.annotate(f'$r = {ca_r_avg_full:.3f}, p = {ca_p_avg_full:.3f}$',
+                    xy=(0.05, 0.89), xycoords='axes fraction',
+                    ha='left', va='center',
+                    bbox={'boxstyle': 'round', 'fc': 'powderblue', 'ec': 'navy'})
+j.ax_joint.annotate(f'$r = {ctc_r_avg_full:.3f}, p = {ctc_p_avg_full:.3f}$',
+                    xy=(0.05, 0.95), xycoords='axes fraction',
+                    ha='left', va='center',
+                    bbox={'boxstyle': 'round', 'fc': '#fc5a50', 'ec': '#9a0200'})
+
+#sns.jointplot(data=combined_df, x='full_x', y='full_y', hue='protein', kind='kde', palette='Set1')
+# Show the plot
+#sns.jointplot(data=combined_df, x='full_x', y='full_y', hue='protein', kind='hist', palette='Set1')
+# Show the plot
