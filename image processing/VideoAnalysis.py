@@ -21,6 +21,11 @@ import scipy.stats as stats
 from matplotlib.patches import Ellipse
 import matplotlib.transforms as transforms
 from scipy.optimize import curve_fit
+plt.rc('xtick', labelsize=16) 
+plt.rc('ytick', labelsize=16) 
+plt.rc('axes', labelsize=18) 
+plt.rc('font', family='sans-serif')
+
 
 def GMM_removal(video_path, output_path, variance, history, run=False):
     
@@ -262,90 +267,167 @@ def visualize_data(profiles, angles, fps, col_change, last_frame, plot=False, ru
                 
     
                 if plot:
+                    # fig = plt.figure(figsize=(10, 5))
                     
+                    # # Time Domain Plot (Subplot 1)
+                    # plt.subplot(1, 2, 1)
+                    # plt.imshow(prof, cmap='coolwarm', interpolation='nearest', aspect='auto')
+                    # plt.title(f"Time Domain - Angle: {angles[i]}")
+                    # plt.xlabel('Time (s)')  # Change x-axis label to Time
+                    # plt.ylabel('Pixel')
+                    # plt.ylim([400, 850])
                     
-                    #time domain
-                    fig = plt.figure(figsize=(10, 5))
+                    # # Calculate time values for x-axis based on frame index and fps
+                    # frame_indices = np.arange(prof.shape[1])
+                    # time_values = frame_indices / fps
+                    # # Select tick positions at 50-second intervals
+                    # tick_positions = np.arange(0, len(time_values), int(2 * fps))
+                    # tick_values = np.round(time_values[tick_positions])  # Round to nearest whole number
                     
-                    # Plot the time domain profile
-                    plt.subplot(2,3,1)
-                    plt.imshow(prof, cmap='plasma', interpolation='nearest', aspect='auto')
+                    # # Format tick labels to remove ".0"
+                    # tick_labels = [str(int(val)) for val in tick_values]
+                    # plt.xticks(tick_positions, tick_labels)  # Set x-axis ticks to formatted tick labels
+                    
+                    # plt.colorbar(label='Intensity')
+                    # plt.tight_layout()
+                    
+                    # # Spectrogram Plot (Subplot 2)
+                    # plt.subplot(1, 2, 2)
+                    # plt.imshow(fft_matrix_log, cmap='coolwarm', interpolation='nearest', aspect='auto')
+                    # plt.title(f"Freq Domain - Angle: {angles[i]}")
+                    # plt.xlabel('Time (s)')  # Change x-axis label to Time
+                    # plt.ylabel('Frequency (Hz)')
+                    # plt.ylim(0, 100)
+                    
+                    # # Calculate time values for x-axis based on frame index and fps
+                    # frame_indices = np.arange(fft_matrix_log.shape[1])
+                    # time_values = frame_indices / fps
+                    # # Select tick positions at 50-second intervals
+                    # tick_positions = np.arange(0, len(time_values), int(5 * fps))
+                    # tick_values = np.round(time_values[tick_positions])  # Round to nearest whole number
+                    
+                    # # Format tick labels to remove ".0"
+                    # tick_labels = [str(int(val)) for val in tick_values]
+                    # plt.xticks(tick_positions, tick_labels)  # Set x-axis ticks to formatted tick labels
+                    
+                    # plt.colorbar(label='Log Intensity')
+                    # plt.tight_layout()
+                    
+                    # plt.show()
+
+                    plt.figure()
+                    plt.imshow(prof, cmap='coolwarm', interpolation='nearest', aspect='auto')
                     plt.title(f"Time Domain - Angle: {angles[i]}")
-                    plt.xlabel('Frame Index')
-                    plt.ylabel('Pixel Position')
+                    plt.xlabel('Time (s)')  # Change x-axis label to Time
+                    plt.ylabel('Pixel')
+                    plt.ylim([400, 850])
+                    
+                    # Calculate time values for x-axis based on frame index and fps
+                    frame_indices = np.arange(prof.shape[1])
+                    time_values = frame_indices / fps
+                    # Select tick positions at 50-second intervals
+                    tick_positions = np.arange(0, len(time_values), int(1 * fps))
+                    tick_values = np.round(time_values[tick_positions])  # Round to nearest whole number
+                    
+                    # Format tick labels to remove ".0"
+                    tick_labels = [str(int(val)) for val in tick_values]
+                    plt.xticks(tick_positions, tick_labels)  # Set x-axis ticks to formatted tick labels
+                    
                     plt.colorbar(label='Intensity')
-                    # Adjust the layout to prevent overlapping of subplots
                     plt.tight_layout()
-                    # Show the plot
                     plt.show()
                     
                     
-                    #spectrogram
-                    plt.subplot(2,3,2)
-                    plt.imshow(fft_matrix_log, cmap='plasma', interpolation='nearest', aspect='auto')
-                    plt.title(f"Freq Domain - Angle: {angles[i]}")
-                    plt.xlabel('Frame Index')
-                    plt.ylabel('Frequency')
-                    plt.ylim(0, 200)  # Set the y-axis limits to 0 and 200 Hz
-                    plt.colorbar(label='Log Intensity')  # Update the colorbar label
-                    # Adjust the layout to prevent overlapping of subplots
+                    plt.figure()
+                    for i in range(0, prof.shape[0], 50):
+                        signal_data = prof[i, :]  # Extract the 1D signal from the current row
+                        
+                        plt.plot(time_values, signal_data, label=f"Row {i + 1}")  # Use time_values calculated previously
+                        plt.xlabel('Time (s)')
+                        plt.ylabel('Intensity')
+                        plt.title("1D Signals from Every 50 Rows of waveform")
+                        #plt.legend()
+                        plt.grid()
+                    
                     plt.tight_layout()
-                    # Show the plot
                     plt.show()
                     
-                    plt.subplot(2,3,3)
-                    prof=prof.transpose()
-                    p=0
-                    for col in prof:
-                        if p < change_column_idx:
-                            plt.plot(col, color="red", alpha=0.01)
-                            p +=1
-                        else:
-                            plt.plot(col, color="blue", alpha=0.01 )
-                            p += 1
-                                
-                    plt.title(f"Angle: {angles[i]}")
-                    plt.xlabel('Pixel')
+                    selected_row = 465  # Change this to the desired row index
+
+                    plt.figure(figsize=(10, 6))  # Adjust the figure size as needed
+                    
+                    signal_data = prof[selected_row, :]  # Extract the 1D signal from the selected row
+                    signal_data = prof[selected_row, :]
+                    signal_list = list(signal_data)
+                    print(signal_list)
+                    
+                    plt.plot(time_values, signal_data)
+                    plt.xlabel('Time (s)')
                     plt.ylabel('Intensity')
-                    # Set custom colors for the legend
-                    legend_labels = ["Untrapped", "Trapped"]
-                    legend_colors = ['red', 'blue']
+                    plt.title(f"1D Signal from Row {selected_row} of prof")
+                    plt.grid()
                     
-                    legend_lines = [Line2D([0], [0], color=color, linewidth=1.5) for color in legend_colors]
+                    plt.tight_layout()
+                    plt.show()
+                    
 
-                    # Create the legend with custom labels and colors
-                    plt.legend(legend_lines, legend_labels, facecolor='white',loc='best', 
-                               bbox_to_anchor=(1, 1), labelcolor='black')                   
-                    plt.show()
-                    
-                    # Plot the averaged FFT plots
-                    plt.subplot(2,3,4)
-                    plt.plot(fft_before, label='Untrapped', color='red')
-                    plt.plot(fft_after, label='Trapped', color='blue')
-                    plt.title(f"Averaged 1D FFT - Angle: {angles[i]}")
-                    plt.xlabel('Frequency')
-                    plt.ylabel('Magnitude')
-                    plt.xlim(8, 130)  # Set the y-axis limits to 0 and 200 Hz
-                    plt.legend()
-                    plt.show()
-                    plt.tight_layout()
-                    
-                    plt.subplot(2,3,5)
-                    plt.plot(fft_after-fft_before, color='black')
-                    plt.title(f"FFT Difference - Angle: {angles[i]}")
-                    plt.xlabel('Frequency')
-                    plt.ylabel('Magnitude')
-                    plt.xlim([0, 200])
-                    plt.show()
-                    plt.tight_layout()
-                    
-                    normalized_frame = last_frame.astype(float) / np.max(last_frame)
 
-                    plt.subplot(2,3,6)
-                    plt.imshow(normalized_frame)  # Convert BGR to RGB for matplotlib
-                    plt.axis('off')  # Hide the axes
-                    plt.show()
-                    plt.tight_layout()
+
+
+                    
+                    # plt.subplot(2,3,3)
+                    # prof=prof.transpose()
+                    # p=0
+                    # for col in prof:
+                    #     if p < change_column_idx:
+                    #         plt.plot(col, color="red", alpha=0.01)
+                    #         p +=1
+                    #     else:
+                    #         plt.plot(col, color="blue", alpha=0.01 )
+                    #         p += 1
+                                
+                    # plt.title(f"Angle: {angles[i]}")
+                    # plt.xlabel('Pixel')
+                    # plt.ylabel('Intensity')
+                    # # Set custom colors for the legend
+                    # legend_labels = ["Untrapped", "Trapped"]
+                    # legend_colors = ['red', 'blue']
+                    
+                    # legend_lines = [Line2D([0], [0], color=color, linewidth=1.5) for color in legend_colors]
+
+                    # # Create the legend with custom labels and colors
+                    # plt.legend(legend_lines, legend_labels, facecolor='white',loc='best', 
+                    #            bbox_to_anchor=(1, 1), labelcolor='black')                   
+                    # plt.show()
+                    
+                    # # Plot the averaged FFT plots
+                    # plt.subplot(2,3,4)
+                    # plt.plot(fft_before, label='Untrapped', color='red')
+                    # plt.plot(fft_after, label='Trapped', color='blue')
+                    # plt.title(f"Averaged 1D FFT - Angle: {angles[i]}")
+                    # plt.xlabel('Frequency')
+                    # plt.ylabel('Magnitude')
+                    # plt.xlim(8, 130)  # Set the y-axis limits to 0 and 200 Hz
+                    # plt.legend()
+                    # plt.show()
+                    # plt.tight_layout()
+                    
+                    # plt.subplot(2,3,5)
+                    # plt.plot(fft_after-fft_before, color='black')
+                    # plt.title(f"FFT Difference - Angle: {angles[i]}")
+                    # plt.xlabel('Frequency')
+                    # plt.ylabel('Magnitude')
+                    # plt.xlim([0, 200])
+                    # plt.show()
+                    # plt.tight_layout()
+                    
+                    # normalized_frame = last_frame.astype(float) / np.max(last_frame)
+
+                    # plt.subplot(2,3,6)
+                    # plt.imshow(normalized_frame)  # Convert BGR to RGB for matplotlib
+                    # plt.axis('off')  # Hide the axes
+                    # plt.show()
+                    # plt.tight_layout()
                 else:
                     pass
                 
@@ -415,6 +497,8 @@ def calculate_rms(signal, window_length):
     return average_rms
 
 def confidence_ellipse(x, y, ax, n_std=3.0, facecolor='none', **kwargs):
+    
+
     """
     Create a plot of the covariance confidence ellipse of *x* and *y*.
 
@@ -465,22 +549,41 @@ def confidence_ellipse(x, y, ax, n_std=3.0, facecolor='none', **kwargs):
 
     ellipse.set_transform(transf + ax.transData)
     return ax.add_patch(ellipse)
-
-def compute_optical_flow(video_path, region_size, total_frames, col_idx,filename, plot=True, run=False):
+def compute_optical_flow(video_path, region_size, total_frames, col_idx,filename, plot=False, run=False):
     
     if run:
         cap = cv2.VideoCapture(video_path)
         
-        # Read the first frame
+        # Read the first frame to get its dimensions
+        ret, first_frame = cap.read()
+        if not ret:
+            cap.release()
+            return 0, 0
+        
+        height, width, _ = first_frame.shape
+        
+        # Calculate the new width to make the video square
+        new_width = height
+        
+        # Calculate the cropping region to keep the center point fixed
+        crop_start = (width - new_width) // 2
+        crop_end = crop_start + new_width
+        
+        # Read the first frame again to start processing
+        cap.release()
+        cap = cv2.VideoCapture(video_path)
         ret, prev_frame = cap.read()
-        prev_gray = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2GRAY)
+        prev_frame = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2RGB)
+        prev_frame = prev_frame[:, crop_start:crop_end, :]
+        prev_frame = cv2.resize(prev_frame, (new_width, height))
+        prev_gray = cv2.cvtColor(prev_frame, cv2.COLOR_RGB2GRAY)
         
         # Get the center pixel coordinates
         height, width = prev_gray.shape
         center_x = width // 2
         center_y = height // 2
         
-        matrix, angle = image_profile(video_path, (center_x, center_y), 1, total_frames, run=True)
+        #matrix, angle = image_profile(video_path, (center_x, center_y), 1, total_frames, run=True)
               
         # Initialize an empty array to store net movements
         net_movements = []
@@ -494,12 +597,13 @@ def compute_optical_flow(video_path, region_size, total_frames, col_idx,filename
         full_movements = []
         
         while True:
-            # Read the next frame
             ret, next_frame = cap.read()
             if not ret:
                 break
-            
-            next_gray = cv2.cvtColor(next_frame, cv2.COLOR_BGR2GRAY)
+            next_frame = cv2.cvtColor(next_frame, cv2.COLOR_BGR2RGB)
+            next_frame = next_frame[:, crop_start:crop_end, :]
+            next_frame = cv2.resize(next_frame, (new_width, height))
+            next_gray = cv2.cvtColor(next_frame, cv2.COLOR_RGB2GRAY)
             
             # Compute optical flow
             flow = cv2.calcOpticalFlowFarneback(prev_gray, next_gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
@@ -562,45 +666,10 @@ def compute_optical_flow(video_path, region_size, total_frames, col_idx,filename
         offset_x = center_x #- region_size // 2
         offset_y = center_y #- region_size // 2
     
-        # # Plot the net movements on the canvas
-        # plt.figure()
-        # # Plot the net movements before the split index in red
-        # plt.scatter(net_movements_before[:, 0] + offset_x, net_movements_before[:, 1] + offset_y, color='red', alpha=0.25,label='Untrapped')
-        # # Plot the net movements after the split index in blue
-        # plt.scatter(net_movements_after[:, 0] + offset_x, net_movements_after[:, 1] + offset_y, color='blue', alpha=0.25,label='Trapped')
-        # # Overlay the scatter plot on the last frame of the video
-        # plt.imshow(cv2.cvtColor(prev_frame, cv2.COLOR_BGR2RGB))
-        # # Get the current reference
-        # ax = plt.gca()
-        
-        # # Create a Rectangle patch
-        # rect = patches.Rectangle((center_x - region_size // 2,center_y - region_size // 2),region_size,region_size,linewidth=1,edgecolor='r',facecolor='none')
-        
-        # # Add the patch to the Axes
-        # ax.add_patch(rect)
-        # plt.xlabel('Net Movement in X direction')
-        # plt.ylabel('Net Movement in Y direction')
-        # plt.title('Optical Flow: Net Movement Scatter Plot')
-        # plt.show()
         
         if plot:
             
-            # fig = plt.figure()
-            
-            # ax = fig.add_subplot() 
-            # # square plot
-            # # Plot the net movements before the split index in red
-            # plt.scatter(net_movements_before[:, 0] , net_movements_before[:, 1], color='red', alpha=0.3,label='Untrapped')
-            # # Plot the net movements after the split index in blue
-            # plt.scatter(net_movements_after[:, 0], net_movements_after[:, 1], color='blue', alpha=0.3,label='Trapped')
-            # # Overlay the scatter plot on the last frame of the video
-            # plt.xlabel('Net Movement in X direction')
-            # plt.ylabel('Net Movement in Y direction')
-            # plt.title('Optical Flow: Net Movement Scatter Plot Center ROI')
-            # plt.grid()
-            # plt.legend()
-            # ax.set_aspect('equal', adjustable='box')
-            # plt.show()
+
             
             # Define the linear function
             def linear_func(x, m, c):
@@ -619,7 +688,7 @@ def compute_optical_flow(video_path, region_size, total_frames, col_idx,filename
             angle_deg = '%.3f'%(angle_deg)
 
             
-            fig = plt.figure(figsize = (5,3))
+            fig = plt.figure(figsize = (10,10))
             r_center = '%.3f'%(r_center)
             ax = fig.add_subplot() 
             # square plot
@@ -639,11 +708,13 @@ def compute_optical_flow(video_path, region_size, total_frames, col_idx,filename
             
             #plt.legend()
             ax.set_aspect('equal', adjustable='box')
+            plt.savefig(filename + 'center.pdf', format="pdf", bbox_inches="tight")
+
             plt.show()
             
             
             r_full = '%.3f'%(r_full)
-            fig = plt.figure(figsize=(3, 3))
+            fig = plt.figure(figsize=(10, 10))
             
             # Fit the data to the linear function
             params2, _ = curve_fit(linear_func, full_movement_after[:, 0], full_movement_after[:, 1])
@@ -675,24 +746,10 @@ def compute_optical_flow(video_path, region_size, total_frames, col_idx,filename
             plt.annotate(annotation_text, xy=(-25, 25), weight='bold', bbox=annotation_box_props)
             
             ax.set_aspect('equal', adjustable='box')
+            plt.savefig(filename + 'full.pdf', format="pdf", bbox_inches="tight")
+
             plt.show()
             
-            # fig = plt.figure()
-            
-            # ax = fig.add_subplot() 
-            # # square plot
-            # # Plot the net movements before the split index in red
-            # plt.scatter(full_movement_before[:, 0] , full_movement_before[:, 1], color='red', alpha=0.3,label='Untrapped')
-            # # Plot the net movements after the split index in blue
-            # plt.scatter(full_movement_after[:, 0], full_movement_after[:, 1], color='blue', alpha=0.3,label='Trapped')
-            # # Overlay the scatter plot on the last frame of the video
-            # plt.xlabel('Net Movement in X direction')
-            # plt.ylabel('Net Movement in Y direction')
-            # plt.title('Optical Flow: Net Movement Scatter Plot Full ROI')
-            # plt.grid()
-            # plt.legend()
-            # ax.set_aspect('equal', adjustable='box')
-            # plt.show()
             
             cap.release()
         else:
@@ -702,15 +759,20 @@ def compute_optical_flow(video_path, region_size, total_frames, col_idx,filename
     else:
         return 0, 0
     
-def hist(x, y, filename, toggle = False):
+
+from matplotlib.gridspec import GridSpec
+
+def hist(x, y, filename, toggle=False):
     
     # Create histograms
-    bins = 30  # Number of bins for the histograms
-    # Histogram for x data
+    bins = 10  # Number of bins for the histograms
+    
+    plt.figure()
     x_hist, x_bins, _ = plt.hist(x, bins=bins, alpha=0.5, label='X')
     
     # Histogram for y data
     y_hist, y_bins, _ = plt.hist(y, bins=bins, alpha=0.5, label='Y')
+    plt.close()
     
     # Calculate FWHM for x data
     x_peak = x_bins[np.argmax(x_hist)]  # Find the peak bin
@@ -727,16 +789,19 @@ def hist(x, y, filename, toggle = False):
     y_fwhm = y_bins[y_right_idx] - y_bins[y_left_idx]  # FWHM for y data
 
     
-    
     if toggle:
-    
+        #plt.savefig(filename + '_plot.png')
+        plt.show()
         # Print the FWHM values
-        print("FWHM for X datac center:", x_fwhm, ' ', filename)
+        print("FWHM for X data center:", x_fwhm, ' ', filename)
         print("FWHM for Y data center:", y_fwhm, ' ', filename)
     else:
+        plt.show()
         # Print the FWHM values
-        print("FWHM for X datac full:", x_fwhm, ' ', filename)
-        print("FWHM for Y data full:", y_fwhm, ' ', filename)    
+        print("FWHM for X data full:", x_fwhm, ' ', filename)
+        print("FWHM for Y data full:", y_fwhm, ' ', filename)
+
+
 
     
 # Create a Tkinter root window
@@ -765,6 +830,91 @@ bsa_pearson_full_p = []
 ca_pearson_full_p = []
 ctc_pearson_full_p = []
 
+
+    
+def scatter_hist(x, y, ax, ax_histx, ax_histy, filename):
+    ax_histx.tick_params(axis='x', labelbottom=False)
+    ax_histy.tick_params(axis='y', labelleft=False)
+    
+    scatter_color = 'blue'  # Set the scatter plot color
+    
+    ax.scatter(x, y, color=scatter_color, alpha=0.3)
+    
+    ax.set_xlim([-110, 110])
+    ax.set_ylim([-110, 110])
+    
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    
+    ax.grid(True)
+    
+    binwidth = 2
+    xymax = max(np.max(np.abs(x)), np.max(np.abs(y)))
+    lim = (int(xymax/binwidth) + 1) * binwidth
+    
+    bins = np.arange(-lim, lim + binwidth, binwidth)
+    x_hist, _ = np.histogram(x, bins=bins)
+    y_hist, _ = np.histogram(y, bins=bins)
+    
+    max_bin_count = 100  # Normalize to a maximum of 100
+    
+    # Normalize histograms
+    x_hist_norm = (x_hist / np.max(x_hist)) * max_bin_count
+    y_hist_norm = (y_hist / np.max(y_hist)) * max_bin_count
+    
+    ax_histx.bar(bins[:-1], x_hist_norm, width=binwidth, color=scatter_color, alpha=0.7)  # Use the same color for histogram
+    
+    # Set the same y-axis limits for both histograms
+    ax_histx.set_ylim([0, max(ax_histx.get_ylim()[1], ax_histy.get_ylim()[1])])
+    
+    ax_histy.barh(bins[:-1], y_hist_norm, height=binwidth, color=scatter_color, alpha=0.7)  # Use the same color for histogram
+
+    # Save the figure as PDF
+    plt.savefig(filename + '_hist.pdf', format="pdf", bbox_inches="tight")
+    plt.close()
+    
+def scatter_hist_2(x, y, ax, ax_histx, ax_histy, filename):
+    ax_histx.tick_params(axis='x', labelbottom=False)
+    ax_histy.tick_params(axis='y', labelleft=False)
+    
+    scatter_color = 'black'  # Set the scatter plot color
+    
+    ax.scatter(x, y, color=scatter_color, alpha=0.3)
+    
+    ax.set_xlim([-30, 30])
+    ax.set_ylim([-30, 30])
+    
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    
+    ax.grid(True)
+    
+    binwidth = 2
+    xymax = max(np.max(np.abs(x)), np.max(np.abs(y)))
+    lim = (int(xymax/binwidth) + 1) * binwidth
+    
+    bins = np.arange(-lim, lim + binwidth, binwidth)
+    x_hist, _ = np.histogram(x, bins=bins)
+    y_hist, _ = np.histogram(y, bins=bins)
+    
+    max_bin_count = 100  # Normalize to a maximum of 100
+    
+    # Normalize histograms
+    x_hist_norm = (x_hist / np.max(x_hist)) * max_bin_count
+    y_hist_norm = (y_hist / np.max(y_hist)) * max_bin_count
+    
+    ax_histx.bar(bins[:-1], x_hist_norm, width=binwidth, color=scatter_color, alpha=0.7)  # Use the same color for histogram
+    
+    # Set the same y-axis limits for both histograms
+    ax_histx.set_ylim([0, max(ax_histx.get_ylim()[1], ax_histy.get_ylim()[1])])
+    
+    ax_histy.barh(bins[:-1], y_hist_norm, height=binwidth, color=scatter_color, alpha=0.7)  # Use the same color for histogram
+
+    # Save the figure as PDF
+    plt.savefig(filename + '_hist.pdf', format="pdf", bbox_inches="tight")
+    plt.close()
+
+    
 
 np.set_printoptions(threshold=sys.maxsize)
 # Prompt the user to select the input video file
@@ -796,7 +946,33 @@ for video_path in video_paths:
 
     ######################## optical flow #####################################
     region_size = 50
-    net_movement_after, full_movement_after = compute_optical_flow(video_path, region_size, total_frames,column_change, filename, run=True)
+    net_movement_after, full_movement_after = compute_optical_flow(video_path, region_size, total_frames,column_change, filename, run=False)
+    #hist(net_movement_after[:, 0], net_movement_after[:, 1], filename, toggle = False)
+          
+            
+    # fig = plt.figure(layout='constrained', figsize = (8,8))
+    
+    # ax = fig.add_gridspec(top=0.75, right = 0.75).subplots()
+    
+    # ax.set(aspect=1)
+    
+    # ax_histx = ax.inset_axes([0, 1.05, 1, 0.25], sharex=ax)
+    # ax_histy = ax.inset_axes([1.05, 0, 0.25, 1], sharey=ax)
+    
+    # scatter_hist(net_movement_after[:, 0], net_movement_after[:, 1], ax, ax_histx, ax_histy, filename+'center')
+    
+    # fig = plt.figure(layout='constrained', figsize=(8,8))
+    
+    # ax = fig.add_gridspec(top=0.75, right = 0.75).subplots()
+    
+    # ax.set(aspect=1)
+    
+    # ax_histx = ax.inset_axes([0, 1.05, 1, 0.25], sharex=ax)
+    # ax_histy = ax.inset_axes([1.05, 0, 0.25, 1], sharey=ax)
+    # scatter_hist_2(full_movement_after[:, 0], full_movement_after[:, 1], ax, ax_histx, ax_histy, filename+'full')
+        
+    
+    #hist(full_movement_after[:, 0], full_movement_after[:, 1], filename, toggle = False)
 ######################################################################################################################################################
 
         
@@ -811,17 +987,17 @@ for video_path in video_paths:
 
 
 ##################################### ANALYSIS ########################################################################################
-    num_angle_increments = 4 # Specify the number of angle increments
-    profiles, angles = image_profile(video_path, center_coords_int, num_angle_increments, total_frames, run = False)
+    num_angle_increments = 1 # Specify the number of angle increments
+    profiles, angles = image_profile(video_path, center_coords_int, num_angle_increments, total_frames, run = True)
     #print(profiles)
-    visualize_data(profiles, angles, fps,column_change, last_frame, plot=False, run=False)
+    visualize_data(profiles, angles, fps,column_change, last_frame, plot=True, run=True)
     #needs to do this for avg rms
     profiles = np.array(profiles)
 ######################################################################################################################################################
 #print(center_trap)
 
-    r_center, p_center = stats.pearsonr(net_movement_after[:, 0], net_movement_after[:, 1])
-    r_full, p_full = stats.pearsonr(full_movement_after[:, 0], full_movement_after[:, 1])
+#     r_center, p_center = stats.pearsonr(net_movement_after[:, 0], net_movement_after[:, 1])
+#     r_full, p_full = stats.pearsonr(full_movement_after[:, 0], full_movement_after[:, 1])
 
     
 
@@ -829,26 +1005,30 @@ for video_path in video_paths:
     filename = re.sub(r"\.mp4$", "", filename)
     # Remove numbers and dashes
     filename = re.sub(r"[\d-]", "", filename)  
+    filename = re.sub(r"_AFTER", "", filename)
+    filename = re.sub(r"_trap", "", filename)
+    filename = re.sub(r"_TRAP", "", filename)
+
     
-    if filename == 'BSA':
-        bsa_pearson_center_r.append(r_center)
-        bsa_pearson_full_r.append(r_full)
+#     if filename == 'BSA':
+#         bsa_pearson_center_r.append(r_center)
+#         bsa_pearson_full_r.append(r_full)
         
-        bsa_pearson_center_p.append(p_center)
-        bsa_pearson_full_p.append(p_full)
+#         bsa_pearson_center_p.append(p_center)
+#         bsa_pearson_full_p.append(p_full)
         
-    elif filename == 'CA':
-        ca_pearson_center_r.append(r_center)
-        ca_pearson_full_r.append(r_full)
+#     elif filename == 'CA':
+#         ca_pearson_center_r.append(r_center)
+#         ca_pearson_full_r.append(r_full)
         
-        ca_pearson_center_p.append(p_center)
-        ca_pearson_full_p.append(p_full)
-    elif filename == 'CTC':
-        ctc_pearson_center_r.append(r_center)
-        ctc_pearson_full_r.append(r_full)
+#         ca_pearson_center_p.append(p_center)
+#         ca_pearson_full_p.append(p_full)
+#     elif filename == 'CTC':
+#         ctc_pearson_center_r.append(r_center)
+#         ctc_pearson_full_r.append(r_full)
         
-        ctc_pearson_center_p.append(p_center)
-        ctc_pearson_full_p.append(p_full)
+#         ctc_pearson_center_p.append(p_center)
+#         ctc_pearson_full_p.append(p_full)
 
     
     center_trap.append(net_movement_after)
@@ -869,74 +1049,76 @@ for video_path in video_paths:
     dfs.append(df)
     
     
-    # hist(net_movement_after[:, 0], net_movement_after[:, 1], filename, toggle = True)
-    # hist(full_movement_after[:, 0], full_movement_after[:, 1], filename, toggle = False)
+#     # hist(net_movement_after[:, 0], net_movement_after[:, 1], filename, toggle = True)
+#     # hist(full_movement_after[:, 0], full_movement_after[:, 1], filename, toggle = False)
 
-bsa_r_avg_center = np.mean(bsa_pearson_center_r)
-bsa_p_avg_center = np.mean(bsa_pearson_center_p)
+# bsa_r_avg_center = np.mean(bsa_pearson_center_r)
+# bsa_p_avg_center = np.mean(bsa_pearson_center_p)
 
-ca_r_avg_center = np.mean(ca_pearson_center_r)
-ca_p_avg_center = np.mean(ca_pearson_center_p)
+# ca_r_avg_center = np.mean(ca_pearson_center_r)
+# ca_p_avg_center = np.mean(ca_pearson_center_p)
 
-ctc_r_avg_center = np.mean(ctc_pearson_center_r)
-ctc_p_avg_center = np.mean(ctc_pearson_center_p)
+# ctc_r_avg_center = np.mean(ctc_pearson_center_r)
+# ctc_p_avg_center = np.mean(ctc_pearson_center_p)
 
-bsa_r_avg_full = np.mean(bsa_pearson_full_r)
-bsa_p_avg_full = np.mean(bsa_pearson_full_p)
+# bsa_r_avg_full = np.mean(bsa_pearson_full_r)
+# bsa_p_avg_full = np.mean(bsa_pearson_full_p)
 
-ca_r_avg_full = np.mean(ca_pearson_full_r)
-ca_p_avg_full = np.mean(ca_pearson_full_p)
+# ca_r_avg_full = np.mean(ca_pearson_full_r)
+# ca_p_avg_full = np.mean(ca_pearson_full_p)
 
-ctc_r_avg_full = np.mean(ctc_pearson_full_r)
-ctc_p_avg_full = np.mean(ctc_pearson_full_p)
+# ctc_r_avg_full = np.mean(ctc_pearson_full_r)
+# ctc_p_avg_full = np.mean(ctc_pearson_full_p)
 
 # Concatenate all DataFrames into a single DataFrame
 combined_df = pd.concat(dfs, ignore_index=True)
 # Assuming combined_df is the pandas DataFrame containing the combined scatter plot data
-g = sns.jointplot(data=combined_df, x='x', y='y', hue='protein', kind='scatter', palette='Set1', alpha=0.1)
-g.ax_joint.annotate(f'$r = {bsa_r_avg_center:.3f}, p = {bsa_p_avg_center:.3f}$',
-                    xy=(0.05, 0.83), xycoords='axes fraction',
-                    ha='left', va='center',
-                    bbox={'boxstyle': 'round', 'fc': '#0cdc73', 'ec': '#048243'})
-g.ax_joint.annotate(f'$r = {ca_r_avg_center:.3f}, p = {ca_p_avg_center:.3f}$',
-                    xy=(0.05, 0.89), xycoords='axes fraction',
-                    ha='left', va='center',
-                    bbox={'boxstyle': 'round', 'fc': 'powderblue', 'ec': 'navy'})
-g.ax_joint.annotate(f'$r = {ctc_r_avg_center:.3f}, p = {ctc_p_avg_center:.3f}$',
-                    xy=(0.05, 0.95), xycoords='axes fraction',
-                    ha='left', va='center',
-                    bbox={'boxstyle': 'round', 'fc': '#fc5a50', 'ec': '#9a0200'})
+# g = sns.jointplot(data=combined_df, x='x', y='y', hue='protein', kind='scatter', palette='Set1', alpha=0.1)
+# g.ax_joint.annotate(f'$r = {bsa_r_avg_center:.3f}, p = {bsa_p_avg_center:.3f}$',
+#                     xy=(0.05, 0.83), xycoords='axes fraction',
+#                     ha='left', va='center',
+#                     bbox={'boxstyle': 'round', 'fc': '#0cdc73', 'ec': '#048243'})
+# g.ax_joint.annotate(f'$r = {ca_r_avg_center:.3f}, p = {ca_p_avg_center:.3f}$',
+#                     xy=(0.05, 0.89), xycoords='axes fraction',
+#                     ha='left', va='center',
+#                     bbox={'boxstyle': 'round', 'fc': 'powderblue', 'ec': 'navy'})
+# g.ax_joint.annotate(f'$r = {ctc_r_avg_center:.3f}, p = {ctc_p_avg_center:.3f}$',
+#                     xy=(0.05, 0.95), xycoords='axes fraction',
+#                     ha='left', va='center',
+#                     bbox={'boxstyle': 'round', 'fc': '#fc5a50', 'ec': '#9a0200'})
 
-#sns.jointplot(data=combined_df, x='x', y='y', hue='protein', kind='kde', palette='Set1')
-# Show the plot
+sns.jointplot(data=combined_df, x='x', y='y', hue='protein', kind='kde', palette='Set1')
+sns.jointplot(data=combined_df, x='full_x', y='full_y', hue='protein', kind='kde', palette='Set1')
+
+# # Show the plot
 #sns.jointplot(data=combined_df, x='x', y='y', hue='protein', kind='hist', palette='Set1')
-# Show the plot
+# # Show the plot
 
-# sns.violinplot(data=combined_df, x='x', y='protein', palette='Set1', bw=10, alpha=0.1)
-# sns.violinplot(data=combined_df, x='y', y='protein', palette='Set1', bw=10)
-# sns.violinplot(data=combined_df, x='full_x', y='protein', palette='Set1', bw=10)
-# sns.violinplot(data=combined_df, x='full_y', y='protein', palette='Set1', bw=10)
+# # sns.violinplot(data=combined_df, x='x', y='protein', palette='Set1', bw=10, alpha=0.1)
+# # sns.violinplot(data=combined_df, x='y', y='protein', palette='Set1', bw=10)
+# # sns.violinplot(data=combined_df, x='full_x', y='protein', palette='Set1', bw=10)
+# # sns.violinplot(data=combined_df, x='full_y', y='protein', palette='Set1', bw=10)
 
-# sns.kdeplot(data=combined_df, x='x', hue='protein', palette='Set1', fill=True, bw_adjust=10, common_norm=False, alpha=0.5, linewidth=0.5)
-# sns.kdeplot(data=combined_df, x='y', hue='protein', palette='Set1', fill=True, bw_adjust=10, common_norm=False, alpha=0.5, linewidth=0.5)
-# sns.kdeplot(data=combined_df, x='full_x', hue='protein', palette='Set1', fill=True, bw_adjust=10, common_norm=False, alpha=0.5, linewidth=0.5)
-# sns.kdeplot(data=combined_df, x='full_y', hue='protein', palette='Set1', fill=True, bw_adjust=10, common_norm=False, alpha=0.5, linewidth=0.5)
+# # sns.kdeplot(data=combined_df, x='x', hue='protein', palette='Set1', fill=True, bw_adjust=10, common_norm=False, alpha=0.5, linewidth=0.5)
+# # sns.kdeplot(data=combined_df, x='y', hue='protein', palette='Set1', fill=True, bw_adjust=10, common_norm=False, alpha=0.5, linewidth=0.5)
+# # sns.kdeplot(data=combined_df, x='full_x', hue='protein', palette='Set1', fill=True, bw_adjust=10, common_norm=False, alpha=0.5, linewidth=0.5)
+# # sns.kdeplot(data=combined_df, x='full_y', hue='protein', palette='Set1', fill=True, bw_adjust=10, common_norm=False, alpha=0.5, linewidth=0.5)
 
-j = sns.jointplot(data=combined_df, x='full_x', y='full_y', hue='protein', kind='scatter', palette='Set1', alpha=0.1)
-j.ax_joint.annotate(f'$r = {bsa_r_avg_full:.3f}, p = {bsa_p_avg_full:.3f}$',
-                    xy=(0.05, 0.83), xycoords='axes fraction',
-                    ha='left', va='center',
-                    bbox={'boxstyle': 'round', 'fc': '#0cdc73', 'ec': '#048243'})
-j.ax_joint.annotate(f'$r = {ca_r_avg_full:.3f}, p = {ca_p_avg_full:.3f}$',
-                    xy=(0.05, 0.89), xycoords='axes fraction',
-                    ha='left', va='center',
-                    bbox={'boxstyle': 'round', 'fc': 'powderblue', 'ec': 'navy'})
-j.ax_joint.annotate(f'$r = {ctc_r_avg_full:.3f}, p = {ctc_p_avg_full:.3f}$',
-                    xy=(0.05, 0.95), xycoords='axes fraction',
-                    ha='left', va='center',
-                    bbox={'boxstyle': 'round', 'fc': '#fc5a50', 'ec': '#9a0200'})
+# j = sns.jointplot(data=combined_df, x='full_x', y='full_y', hue='protein', kind='scatter', palette='Set1', alpha=0.1)
+# j.ax_joint.annotate(f'$r = {bsa_r_avg_full:.3f}, p = {bsa_p_avg_full:.3f}$',
+#                     xy=(0.05, 0.83), xycoords='axes fraction',
+#                     ha='left', va='center',
+#                     bbox={'boxstyle': 'round', 'fc': '#0cdc73', 'ec': '#048243'})
+# j.ax_joint.annotate(f'$r = {ca_r_avg_full:.3f}, p = {ca_p_avg_full:.3f}$',
+#                     xy=(0.05, 0.89), xycoords='axes fraction',
+#                     ha='left', va='center',
+#                     bbox={'boxstyle': 'round', 'fc': 'powderblue', 'ec': 'navy'})
+# j.ax_joint.annotate(f'$r = {ctc_r_avg_full:.3f}, p = {ctc_p_avg_full:.3f}$',
+#                     xy=(0.05, 0.95), xycoords='axes fraction',
+#                     ha='left', va='center',
+#                     bbox={'boxstyle': 'round', 'fc': '#fc5a50', 'ec': '#9a0200'})
 
-#sns.jointplot(data=combined_df, x='full_x', y='full_y', hue='protein', kind='kde', palette='Set1')
-# Show the plot
-#sns.jointplot(data=combined_df, x='full_x', y='full_y', hue='protein', kind='hist', palette='Set1')
-# Show the plot
+# #sns.jointplot(data=combined_df, x='full_x', y='full_y', hue='protein', kind='kde', palette='Set1')
+# # Show the plot
+# #sns.jointplot(data=combined_df, x='full_x', y='full_y', hue='protein', kind='hist', palette='Set1')
+# # Show the plot
