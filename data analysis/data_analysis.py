@@ -110,10 +110,10 @@ def plot_file_data(plot=False):
 
             plt.figure(figsize=(14, 5))
 
-            plt.plot(time, voltage, linewidth=1,color='magenta', alpha=0.25, label='APD')
-            plt.plot(time, filtered_voltage, linewidth=2, color = 'magenta', label='APD (1Hz LPF)')
+            plt.plot(time, voltage, linewidth=1,color='r', alpha=0.25, label='APD')
+            plt.plot(time, filtered_voltage, linewidth=2, color = 'r', label='APD (1Hz LPF)')
             # plt.plot(time_2, signal_data, linewidth = 2, color = 'm', label = '1D Video Intensity')
-            plt.xticks(np.arange(0, max(time), step=1))
+            plt.xticks(np.arange(0, max(time), step=10))
             plt.xticks(rotation=45, ha='right')
             plt.xlabel('Time (s)')
             plt.ylabel('APD Signal (V)')
@@ -334,7 +334,7 @@ files = []
 cornerFreq = []
 autocorr_values = []
 colors = ['darkviolet', 'tab:orange', 'magenta']
-file_data = plot_file_data(plot=f)
+file_data = plot_file_data(plot=t)
 if file_data:
     print("Files selected successfully!")
     average_rmsd_list = []
@@ -352,32 +352,32 @@ if file_data:
         
         print(name)
         
-        #psd_run = f
-        #rmsd_run = f
-        #hist_run = f
+        psd_run = f
+        rmsd_run = f
+        hist_run = f
         
-        #histogram(trapped, run=hist_run)
-        #average_rmsd = calculate_rmsd(trapped, 5000, name, run=rmsd_run)
+        histogram(trapped, run=hist_run)
+        average_rmsd = calculate_rmsd(trapped, 5000, name, run=rmsd_run)
 
 
-        time_step = 1/100000  # Time step in seconds
-        desired_lag_ms = 0.1  # Desired lag in milliseconds
-        desired_lag_steps = int(desired_lag_ms / time_step)  # Convert desired lag to time steps
-        lags_range = range(desired_lag_steps + 1)
+        # time_step = 1/100000  # Time step in seconds
+        # desired_lag_ms = 0.1  # Desired lag in milliseconds
+        # desired_lag_steps = int(desired_lag_ms / time_step)  # Convert desired lag to time steps
+        # lags_range = range(desired_lag_steps + 1)
         
-        autocorr_values = acorr(trapped, lags_range)
-        np.savetxt(str(os.path.splitext(name)[0]) + '_autocorr.txt', autocorr_values, fmt='%.8f', delimiter='\n')
+        # autocorr_values = acorr(trapped, lags_range)
+        # np.savetxt(str(os.path.splitext(name)[0]) + '_autocorr.txt', autocorr_values, fmt='%.8f', delimiter='\n')
         
-        # Call compute_PSD function to compute PSD
-        #psd = compute_PSD(trapped, fs, start, ending, name, run=psd_run)
-        #PSD_data.append(psd)
-        #files.append(name)
+        #Call compute_PSD function to compute PSD
+        psd = compute_PSD(trapped, fs, start, ending, name, run=psd_run)
+        PSD_data.append(psd)
+        files.append(name)
 
         #average_rmsd_list.append(average_rmsd)
     # for autocorr_values, file_name, color in zip(autocorr_values,files, colors ):
     #     plt.plot(lags_range, autocorr_values, label=file_name, color = color)
         
-    #newFile(trapped, write=False)
+    newFile(trapped, write=False)
 
     for array, file_name in zip(PSD_data, files):
         fc = psd_fitter(array, 4, 50000, file_name, run=psd_run)
