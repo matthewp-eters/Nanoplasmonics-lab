@@ -119,7 +119,7 @@ def plot_file_data(plot=False):
             plt.ylabel('APD Signal (V)')
             plt.gca().yaxis.set_major_formatter(StrMethodFormatter('{x:,.2f}')) # 2 decimal places
             
-            xmin = 510
+            xmin = 514
             xmax = xmin + 40
             ymin = 1.5
             ymax = ymin + 0.34
@@ -199,16 +199,16 @@ def psd_fitter(psd, minFreq, maxFreq, filename, plot=True, run=False):
         mpl.rcParams['axes.spines.top'] = False
         if plot:
             plt.figure(figsize=(10,8))
-            plt.plot(fs, ys, '.', label="data", color='magenta', alpha = 0.5)
+            plt.plot(fs, ys, '.', label="data", color='r', alpha = 0.5)
             plt.plot(fs, Lorentzian(fs, A, fc), '--', label="fitted", color='k')
-            plt.text(0.975, 0.925, f"fc = {abs(fc):.3f} Hz", fontsize=22, bbox=dict(facecolor='magenta', alpha=0.5), transform=plt.gca().transAxes, horizontalalignment='right')
+            plt.text(0.975, 0.925, f"fc = {abs(fc):.3f} Hz", fontsize=22, bbox=dict(facecolor='r', alpha=0.5), transform=plt.gca().transAxes, horizontalalignment='right')
             plt.xlabel('Frequency (Hz)')
             plt.ylabel('P (V$^2$/Hz)')
             plt.xscale('Log')
             plt.yscale('Log')
             plt.tight_layout()
             plt.xlim([4, 50000])
-            plt.savefig(filename + 'PSD.pdf')
+            #plt.savefig(filename + 'PSDhigh8.png')
             # plt.close()
         else:
             pass
@@ -219,11 +219,11 @@ def psd_fitter(psd, minFreq, maxFreq, filename, plot=True, run=False):
 def histogram(trapped, bins='auto', density=True, plot=True, run=False):
     if run:
         
-        # Apply a 1Hz low-pass filter to the voltage data
+        #Apply a 1Hz low-pass filter to the voltage data
         cutoff_frequency = 10  # 1 Hz
         nyquist_frequency = 0.5 * 100000  # Nyquist frequency for your sampling rate
         b, a = signal.butter(1, cutoff_frequency /
-                             nyquist_frequency, btype='low')
+                              nyquist_frequency, btype='low')
         trapped = signal.lfilter(b, a, trapped)
         if plot:
             plt.figure(figsize=(10,8))
@@ -240,14 +240,15 @@ def histogram(trapped, bins='auto', density=True, plot=True, run=False):
             kde = stats.gaussian_kde(trapped)
             x_kde = np.linspace(min(trapped), max(trapped), 1000)
             y_kde = kde(x_kde)
-            plt.plot(x_kde, y_kde, color='magenta', linestyle='-', linewidth=2, label='Smooth Outline')
+            plt.plot(x_kde, y_kde, color='r', linestyle='-', linewidth=2, label='Smooth Outline')
 
             # Fill area underneath the smooth line
-            plt.fill_between(x_kde, y_kde, alpha=0.3, color='magenta')
+            plt.fill_between(x_kde, y_kde, alpha=0.3, color='r')
 
             plt.xlabel('Value')
             plt.ylabel('Frequency' if not density else 'Probability Density')
             plt.show()
+            
         else:
             pass
 
@@ -299,8 +300,8 @@ def calculate_rmsd(signal, window_length, file_name, run=False):
 
         average_rmsd = np.mean(rmsd_values)/mean_signal
 
-        # print("File Name:", file_name)
-        # print("Average RMSD:", average_rmsd)
+        print("File Name:", file_name)
+        print("Average RMSD:", average_rmsd)
 
         return average_rmsd
     else:
@@ -318,11 +319,31 @@ def newFile(trapped, write=False):
         pass
 
 def acorr(x, lags):
+    
     x_demeaned = x-x.mean()
     corr=np.correlate(x_demeaned,x_demeaned,'full')[len(x)-1:]/(np.var(x)*len(x))
     return corr[:len(lags)]
 
-
+def energyLandscape(trapped):
+    
+        # Apply a 1Hz low-pass filter to the voltage data
+    cutoff_frequency = 100  # 1 Hz
+    nyquist_frequency = 0.5 * 100000  # Nyquist frequency for your sampling rate
+    b, a = signal.butter(1, cutoff_frequency /
+                         nyquist_frequency, btype='low')
+    trapped = signal.lfilter(b, a, trapped)
+    
+    hist, bin_edges = np.histogram(trapped, density=True, bins =10)
+    
+    plt.figure(figsize=(7,4))
+    plt.hist(trapped, bins = 100, density=True, color = 'r')
+    
+    
+    Vx = -1*np.log(hist)
+    
+    plt.figure(figsize=(7,4))
+    plt.plot(Vx, color = 'r', linewidth = 2, linestyle = '-')
+    return 
     # Step 3: Fit to a Two-Exponential Function
 def two_exp_function(t, a1, tau1, a2, tau2):
     return a1 * np.exp(-t / tau1) + a2 * np.exp(-t / tau2)
@@ -332,50 +353,45 @@ f = False
 PSD_data = []
 files = []
 cornerFreq = []
-autocorr_values = []
-colors = ['darkviolet', 'tab:orange', 'magenta']
 file_data = plot_file_data(plot=t)
+
+# file_data = []
+# data = pd.read_csv('/Volumes/SeaGlassUSB/BSA_6.454mW.txt', skiprows=16,
+#                     header=None, delim_whitespace=True).values
+# voltage = data[:, 0]
+# time_step = 0.00001
+# time = np.arange(0, (len(voltage)-0.5)*time_step, time_step)
+
+# file_names = 'BSA6.454mW'
+# file_data.append({'time': time, 'voltage': voltage,
+#                   'fs': 100000, 'name': file_names})
 if file_data:
     print("Files selected successfully!")
     average_rmsd_list = []
     for data in file_data:
         time = data['time']
-        start = time[0]
-        ending = time[-1]
+        start = 6
+        ending = 11
         voltage = data['voltage']
-        # voltage2=data['voltage2']
         minTrappedTime = find_nearest_idx(time, start)
         maxTrappedTime = find_nearest_idx(time, ending)
         trapped = voltage[minTrappedTime:maxTrappedTime]
         fs = data['fs']
         name = data['name']
         
-        print(name)
+        #print(name)
         
-        psd_run = f
+        psd_run = t
         rmsd_run = f
         hist_run = f
         
         histogram(trapped, run=hist_run)
-        average_rmsd = calculate_rmsd(trapped, 5000, name, run=rmsd_run)
+        average_rmsd = calculate_rmsd(trapped, 5000, name, run=True)
+        #energyLandscape(trapped)
 
-
-        # time_step = 1/100000  # Time step in seconds
-        # desired_lag_ms = 0.1  # Desired lag in milliseconds
-        # desired_lag_steps = int(desired_lag_ms / time_step)  # Convert desired lag to time steps
-        # lags_range = range(desired_lag_steps + 1)
-        
-        # autocorr_values = acorr(trapped, lags_range)
-        # np.savetxt(str(os.path.splitext(name)[0]) + '_autocorr.txt', autocorr_values, fmt='%.8f', delimiter='\n')
-        
-        #Call compute_PSD function to compute PSD
         psd = compute_PSD(trapped, fs, start, ending, name, run=psd_run)
         PSD_data.append(psd)
         files.append(name)
-
-        #average_rmsd_list.append(average_rmsd)
-    # for autocorr_values, file_name, color in zip(autocorr_values,files, colors ):
-    #     plt.plot(lags_range, autocorr_values, label=file_name, color = color)
         
     newFile(trapped, write=False)
 
