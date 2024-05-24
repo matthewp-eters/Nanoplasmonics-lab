@@ -34,7 +34,10 @@ plt.rc('font', family='sans-serif')
 
 # Define a linear function for curve fitting
 def linear_fit(x, a, b):
-    return a * x + b
+    return a * x + b 
+
+def quad_fit(x, a, b):
+    return a*x**2 +b
 
 def plot_file_data(plot=False):
     # Create file dialog window
@@ -67,10 +70,15 @@ def plot_file_data(plot=False):
             voltage = data[:, 1]
         elif ext == '.txt':
             data = pd.read_csv(file_path, skiprows=16,
-                               header=None, delim_whitespace=True).values
+                                header=None, delim_whitespace=True).values
             voltage = data[:, 0]
             time_step = 0.00001
             time = np.arange(0, (len(voltage)-0.5)*time_step, time_step)
+            # data = pd.read_csv(file_path, skiprows=1,
+            #                    header=None, delim_whitespace=True).values
+            # voltage = data[:, 1]
+            # time_step = 0.00001
+            # time = data[:,0]
         elif ext == '.tdms':
             tdms_file = TdmsFile(file_path)
             properties = tdms_file['Analog'].properties
@@ -88,13 +96,26 @@ def plot_file_data(plot=False):
 
 
         # Use curve_fit to fit the linear function to the data
+        # popt, pcov = curve_fit(quad_fit, time, voltage)
+
+        # # Calculate the linear fit using the fitted parameters
+        # quad_fit_data = quad_fit(time, *popt)
+
+        # # Subtract the linear fit from the original data
+        # voltage -= quad_fit_data
+        # voltage += 0.5
+        
+        
+
+        #Use curve_fit to fit the linear function to the data
         popt, pcov = curve_fit(linear_fit, time, voltage)
 
-        # Calculate the linear fit using the fitted parameters
-        linear_fit_data = linear_fit(time, *popt)
+        # # Calculate the linear fit using the fitted parameters
+        # linear_fit_data = linear_fit(time, *popt)
 
-        # Subtract the linear fit from the original data
-        voltage -= linear_fit_data
+        # # Subtract the linear fit from the original data
+        # voltage -= linear_fit_data
+        # voltage += 0.5
         
         
         # Apply a 1Hz low-pass filter to the voltage data
@@ -107,32 +128,40 @@ def plot_file_data(plot=False):
         # Plot the data
         if plot:
 
-            plt.figure(figsize=(20, 10))
+            plt.figure(figsize=(12, 8))
 
-            plt.plot(time, voltage+1, linewidth=1,color='red', alpha=0.25, label='APD')
-            plt.plot(time, filtered_voltage+1, linewidth=2, color = 'red', label='APD (1Hz LPF)')
-            plt.axhline(1, color = 'k', linewidth = 1, linestyle = '--')
+            plt.plot(time, voltage, linewidth=1,color='red', alpha=0.25, label='APD')
+            plt.plot(time, filtered_voltage, linewidth=2, color = 'red', label='APD (1Hz LPF)')
+            # plt.axhline(0.5244, color = 'k', linewidth = 1, linestyle = '--')
+            # plt.axhline(0.4811,  color = 'k', linewidth = 1, linestyle = '--')
+            # plt.axhline(0.4811+(1/6)*(0.5244-0.4811), color = 'darkgreen', linewidth = 1, linestyle = '--')
+            # plt.axhline(0.5244-(1/6)*(0.5244-0.4811), color = 'darkorange', linewidth = 1, linestyle = '--')
+            plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:,.3f}')) # 2 decimal places
             
-            
-            
-            plt.xticks(np.arange(0, max(time), step=10))
+            #plt.xticks(np.arange(0, max(time), step=0.005))
             plt.xticks(rotation=45, ha='right')
             plt.xlabel('Time (s)')
-            plt.ylabel('APD Signal (V)')
+            plt.ylabel('Transmission (V)')
             #plt.gca().yaxis.set_major_formatter(StrMethodFormatter('{x:,.2f}')) # 2 decimal places
             
-            xmin = 100
-            #xmax = len(time)*time_step
-            xmax = 110
-            ymin = 0.85
-            ymax = 1.15
+            xmin = 55.639
+            xmax = 55.652
             
-            plt.xlim([xmin, xmax])
-            plt.ylim([ymin, ymax])
-            plt.grid(axis='y')
+            #plt.xlim([54.3, 58.55])
+            #plt.ylim([0.43, 0.55])
             
+            xmin_index = find_nearest_idx(time, xmin)
+            xmax_index = find_nearest_idx(time, xmax)
+            
+            # Extract the time and filtered voltage data within the specified range
+            time_range = time[xmin_index:xmax_index]
+            voltage_range = voltage[xmin_index:xmax_index]
+            
+            # Save filtered data and time steps within the specified range to a text file
+            #np.savetxt('BSA_10_0-24.6_2_states_F-E.txt', np.column_stack((time_range, voltage_range)), delimiter='\t', header='Time(s)\tFiltered Voltage(V)', fmt='%.6f')
+
             plt.tight_layout()       
-            plt.savefig(file_names[i]+'trapZoom.png')
+            #plt.savefig(file_names[i]+'trapZoom.png')
             
 
         else:
@@ -144,38 +173,44 @@ def histogram(trapped, name, bins='auto', density=True, plot=True, run=False):
     if run:
         
         #Apply a 1Hz low-pass filter to the voltage data
-        cutoff_frequency = 10 # 1 Hz
+        cutoff_frequency = 1000# 1 Hz
         nyquist_frequency = 0.5 * 100000  # Nyquist frequency for your sampling rate
         b, a = signal.butter(1, cutoff_frequency /
                               nyquist_frequency, btype='low')
-        trapped = signal.lfilter(b, a, trapped)+1
+        trapped = signal.lfilter(b, a, trapped)
         if plot:
-            plt.figure(figsize=(5,10))
+            plt.figure(figsize=(5,8))
             
             #counts, bins, bars = plt.hist(trapped, bins = 1000, color = 'r', alpha = 0.5, edgecolor='r',  orientation='horizontal')
             counts, bins, bars = plt.hist(trapped, bins = 100, color = 'red', alpha = 0.5, edgecolor='red',  orientation='horizontal', density = True)
             plt.xlabel('Density', labelpad=12.5)
-            plt.ylabel('APD Signal (V)')
-            plt.ylim([0.85,1.15])
+            plt.ylabel('Transmission (V)')
+            #plt.ylim([0.35, 0.65])
             plt.xticks(rotation=45, ha='right')
             plt.grid(axis='y')
             plt.tight_layout()
-            plt.savefig(name+'Hist.png')
+
+            #plt.savefig(name+'Hist.png')
             plt.show()
             
-            plt.figure(figsize=(5,10))
-            counts, bins, bars = plt.hist(trapped, bins = 100, color = 'red', alpha = 0.5, edgecolor='red',  orientation='horizontal', density = False)
+            #plt.figure(figsize=(5,10))
+           # counts, bins, bars = plt.hist(trapped, bins = 1000, color = 'red', alpha = 0.5, edgecolor='red',  orientation='horizontal', density = False)
             
-            plt.figure(figsize=(10,10))
+            plt.figure(figsize=(8,12))
             Vx = -1*np.log(counts)
             plt.plot(Vx, color = 'red', linewidth = 2, linestyle = '-')
-            plt.xlabel('Reaction Coordinate')
             plt.ylabel('$K_{b}$T')
-            plt.xticks(rotation=45, ha='right')
-            
-            plt.ylim([-18, 0])
+            plt.tick_params(
+                axis='x',          # changes apply to the x-axis
+                which='both',      # both major and minor ticks are affected
+                bottom=False,      # ticks along the bottom edge are off
+                top=False,         # ticks along the top edge are off
+                labelbottom=False) # labels along the bottom edge are off            
+            #plt.xlim([775,992])
+            #plt.ylim([-6, 6])
+            plt.grid(axis='y')
             plt.tight_layout()
-            plt.savefig(name+'energyLandscape.svg')
+            #plt.savefig(name+'energyLandscape.png')
             plt.show()
             
         else:
@@ -392,15 +427,26 @@ if file_data:
     average_rmsd_list = []
     for data in file_data:
         time = data['time']
-        start = 60
-        ending = 205
+        start = 14
+        ending = 114
         voltage = data['voltage']
         minTrappedTime = find_nearest_idx(time, start)
         maxTrappedTime = find_nearest_idx(time, ending)
-        trapped = voltage[minTrappedTime:maxTrappedTime]
         fs = data['fs']
         name = data['name']
         
+        
+        # popt, pcov = curve_fit(linear_fit, time, voltage)
+
+        # # Calculate the linear fit using the fitted parameters
+        # linear_fit_data = linear_fit(time, *popt)
+
+        # # Subtract the linear fit from the original data
+        # voltage -= linear_fit_data
+        # voltage += 0.5
+        
+        trapped = voltage[minTrappedTime:maxTrappedTime]
+
 
         
             
@@ -408,7 +454,7 @@ if file_data:
         
         threshold_value = 1  # You can adjust this threshold as needed
 
-        hist_run = f
+        hist_run = t
         
         histogram(trapped,name, run=hist_run)
         
