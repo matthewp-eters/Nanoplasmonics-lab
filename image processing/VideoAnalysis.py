@@ -21,9 +21,11 @@ import scipy.stats as stats
 from matplotlib.patches import Ellipse
 import matplotlib.transforms as transforms
 from scipy.optimize import curve_fit
-plt.rc('xtick', labelsize=16) 
-plt.rc('ytick', labelsize=16) 
-plt.rc('axes', labelsize=18) 
+from matplotlib.colors import LinearSegmentedColormap
+
+plt.rc('xtick', labelsize=20) 
+plt.rc('ytick', labelsize=20) 
+plt.rc('axes', labelsize=25) 
 plt.rc('font', family='sans-serif')
 
 
@@ -183,7 +185,7 @@ def image_profile(video_path, center_coords, num_angles, total_frames, run = Fal
             # Calculate the angle for the profile
             angle = (angle_idx * 180) / num_angles
             print("angle",angle)
-            frame_profile_matrix = np.zeros((total_frames, 1280))
+            frame_profile_matrix = np.zeros((total_frames, 1920))
             M = cv2.getRotationMatrix2D(center_coords, angle, 1)
     
             # Reset the video capture to the beginning
@@ -221,15 +223,18 @@ def visualize_data(profiles, angles, fps, col_change, last_frame, plot=False, ru
         rms_values_list = []  # List to store RMS values for each column
         avg_rms_before_list = []  # List to store average RMS before values
         avg_rms_after_list = []  # List to store average RMS after values
+        
+        profiles_list = []
+
         for i, prof in enumerate(profiles):
             
             prof = prof.transpose()
             
             # Calculate RMS of each column
-            rms_values = np.sqrt(np.mean(np.square(prof), axis=0))
+            #rms_values = np.sqrt(np.mean(np.square(prof), axis=0))
             
             # Append RMS values to the list
-            rms_values_list.append(rms_values.tolist())
+           # rms_values_list.append(rms_values.tolist())
             #print(rms_values)
     
             # Compute the one-sided FFT for each column
@@ -258,17 +263,17 @@ def visualize_data(profiles, angles, fps, col_change, last_frame, plot=False, ru
                 
                 
                 # Average the RMS values before and after the change index
-                avg_rms_before = calculate_rms(rms_values[:change_column_idx], 5)
-                avg_rms_after = calculate_rms(rms_values[change_column_idx:], 5)
+                #avg_rms_before = calculate_rms(rms_values[:change_column_idx], 5)
+                #avg_rms_after = calculate_rms(rms_values[change_column_idx:], 5)
                 
-                avg_rms_before_list.append(avg_rms_before)
-                avg_rms_after_list.append(avg_rms_after)
+                #avg_rms_before_list.append(avg_rms_before)
+                #avg_rms_after_list.append(avg_rms_after)
             
+
                 
     
                 if plot:
-                    # fig = plt.figure(figsize=(10, 5))
-                    
+#%%
                     # # Time Domain Plot (Subplot 1)
                     # plt.subplot(1, 2, 1)
                     # plt.imshow(prof, cmap='coolwarm', interpolation='nearest', aspect='auto')
@@ -314,19 +319,21 @@ def visualize_data(profiles, angles, fps, col_change, last_frame, plot=False, ru
                     # plt.tight_layout()
                     
                     # plt.show()
-
-                    plt.figure()
+#%%
+                    profiles_list.append(prof)
+                    plt.figure(figsize = (15,4))
                     plt.imshow(prof, cmap='coolwarm', interpolation='nearest', aspect='auto')
-                    plt.title(f"Time Domain - Angle: {angles[i]}")
+                    #plt.title(f"Time Domain - Angle: {angles[i]}")
                     plt.xlabel('Time (s)')  # Change x-axis label to Time
                     plt.ylabel('Pixel')
-                    plt.ylim([400, 850])
+                    plt.ylim([0, 1920])
+                    #plt.xlim([45, 55])
                     
                     # Calculate time values for x-axis based on frame index and fps
                     frame_indices = np.arange(prof.shape[1])
                     time_values = frame_indices / fps
                     # Select tick positions at 50-second intervals
-                    tick_positions = np.arange(0, len(time_values), int(1 * fps))
+                    tick_positions = np.arange(0, len(time_values), int(10 * fps))
                     tick_values = np.round(time_values[tick_positions])  # Round to nearest whole number
                     
                     # Format tick labels to remove ".0"
@@ -337,6 +344,8 @@ def visualize_data(profiles, angles, fps, col_change, last_frame, plot=False, ru
                     plt.tight_layout()
                     plt.show()
                     
+#%%                    
+#%%
                     
                     plt.figure()
                     for i in range(0, prof.shape[0], 50):
@@ -352,9 +361,9 @@ def visualize_data(profiles, angles, fps, col_change, last_frame, plot=False, ru
                     plt.tight_layout()
                     plt.show()
                     
-                    selected_row = 465  # Change this to the desired row index
+                    selected_row = 968  # Change this to the desired row index
 
-                    plt.figure(figsize=(10, 6))  # Adjust the figure size as needed
+                    plt.figure(figsize=(14,8))  # Adjust the figure size as needed
                     
                     signal_data = prof[selected_row, :]  # Extract the 1D signal from the selected row
                     signal_data = prof[selected_row, :]
@@ -364,8 +373,8 @@ def visualize_data(profiles, angles, fps, col_change, last_frame, plot=False, ru
                     plt.plot(time_values, signal_data)
                     plt.xlabel('Time (s)')
                     plt.ylabel('Intensity')
-                    plt.title(f"1D Signal from Row {selected_row} of prof")
                     plt.grid()
+                    
                     
                     plt.tight_layout()
                     plt.show()
@@ -428,18 +437,50 @@ def visualize_data(profiles, angles, fps, col_change, last_frame, plot=False, ru
                     # plt.axis('off')  # Hide the axes
                     # plt.show()
                     # plt.tight_layout()
+                    #%%
                 else:
                     pass
                 
-        # # Create scatter plot for Average RMS Before
-        # plt.figure(figsize=(8, 6))
-        # plt.scatter(angles, avg_rms_before_list, c='blue', label='Untrapped')
-        # plt.scatter(angles, avg_rms_after_list, c='red', label='Trapped')
-        # plt.title("Average RMS")
-        # plt.xlabel("Angle")
-        # plt.ylabel("Average RMS")
-        # plt.legend()
-        # plt.show()
+        for matrix in profiles_list:
+            for i in range(len(matrix)):
+                for j in range(len(matrix[i])):
+                    if matrix[i][j] < 100:
+                        matrix[i][j] = 0
+        def create_colormap(color):
+            cmap = LinearSegmentedColormap.from_list('custom_cmap', [(0, 0, 0, 0), color], N=100)
+            return cmap
+        
+        # Colors for each matrix
+        colors = ['red', 'green', 'blue', 'yellow']
+        
+        # Create a figure and axis
+        fig, ax = plt.subplots(figsize = (15,4))
+        
+        # Plot each matrix with a different color
+        for i, matrix in enumerate(profiles_list):
+            cmap = create_colormap(colors[i])
+            im = ax.imshow(matrix, cmap=cmap, vmin=0, vmax=100)
+        
+        # Create a colorbar
+        # cbar = ax.figure.colorbar(im, ax=ax, ticks=[0, 100])
+        # cbar.ax.set_yticklabels(['0', '100'])  # Set tick labels
+        # cbar.ax.set_ylabel('Value')
+        time_values = (frame_indices / fps)
+        # Select tick positions at 50-second intervals
+        tick_positions = np.arange(0, len(time_values), int(10 * fps))
+        tick_values = np.round(time_values[tick_positions])  # Round to nearest whole number
+        
+        # Format tick labels to remove ".0"
+        tick_labels = [str(int(val)) for val in tick_values]
+        plt.xticks(tick_positions, tick_labels)  # Set x-axis ticks to formatted tick labels
+        #plt.xlim([40, 60])
+        plt.ylim([550, 725])
+        plt.xlabel('Time (s)')  # Change x-axis label to Time
+        plt.ylabel('Pixel')
+        # Show the plot
+        plt.tight_layout()
+        plt.show()
+            
     else:
         pass    
 
@@ -1031,22 +1072,22 @@ for video_path in video_paths:
 #         ctc_pearson_full_p.append(p_full)
 
     
-    center_trap.append(net_movement_after)
-    full_trap.append(full_movement_after)
+    # center_trap.append(net_movement_after)
+    # full_trap.append(full_movement_after)
     
     
-    # Create a DataFrame for the current file's scatter plot data
-    scatter_data = {
-        'x': net_movement_after[:, 0],
-        'y': net_movement_after[:, 1],
-        'full_x': full_movement_after[:,0],
-        'full_y': full_movement_after[:,1],
-        'protein': filename
-    }
-    df = pd.DataFrame(scatter_data)
+    # # Create a DataFrame for the current file's scatter plot data
+    # scatter_data = {
+    #     'x': net_movement_after[:, 0],
+    #     'y': net_movement_after[:, 1],
+    #     'full_x': full_movement_after[:,0],
+    #     'full_y': full_movement_after[:,1],
+    #     'protein': filename
+    # }
+    # df = pd.DataFrame(scatter_data)
 
-    # Append the DataFrame to the list
-    dfs.append(df)
+    # # Append the DataFrame to the list
+    # dfs.append(df)
     
     
 #     # hist(net_movement_after[:, 0], net_movement_after[:, 1], filename, toggle = True)
@@ -1071,7 +1112,7 @@ for video_path in video_paths:
 # ctc_p_avg_full = np.mean(ctc_pearson_full_p)
 
 # Concatenate all DataFrames into a single DataFrame
-combined_df = pd.concat(dfs, ignore_index=True)
+# combined_df = pd.concat(dfs, ignore_index=True)
 # Assuming combined_df is the pandas DataFrame containing the combined scatter plot data
 # g = sns.jointplot(data=combined_df, x='x', y='y', hue='protein', kind='scatter', palette='Set1', alpha=0.1)
 # g.ax_joint.annotate(f'$r = {bsa_r_avg_center:.3f}, p = {bsa_p_avg_center:.3f}$',
@@ -1087,8 +1128,8 @@ combined_df = pd.concat(dfs, ignore_index=True)
 #                     ha='left', va='center',
 #                     bbox={'boxstyle': 'round', 'fc': '#fc5a50', 'ec': '#9a0200'})
 
-sns.jointplot(data=combined_df, x='x', y='y', hue='protein', kind='kde', palette='Set1')
-sns.jointplot(data=combined_df, x='full_x', y='full_y', hue='protein', kind='kde', palette='Set1')
+# sns.jointplot(data=combined_df, x='x', y='y', hue='protein', kind='kde', palette='Set1')
+# sns.jointplot(data=combined_df, x='full_x', y='full_y', hue='protein', kind='kde', palette='Set1')
 
 # # Show the plot
 #sns.jointplot(data=combined_df, x='x', y='y', hue='protein', kind='hist', palette='Set1')
