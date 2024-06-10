@@ -13,6 +13,7 @@ import pandas as pd
 import scipy
 from nptdms import TdmsFile
 from scipy.optimize import curve_fit
+from scipy.fftpack import fft, ifft
 from tkinter import Tk, filedialog
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -21,6 +22,9 @@ from scipy import stats
 from scipy import signal
 from matplotlib.ticker import StrMethodFormatter
 
+sns.set_theme(style='ticks')
+
+
 plt.rc('xtick', labelsize=24)
 plt.rc('ytick', labelsize=24)
 plt.rc('axes', labelsize=29)
@@ -28,7 +32,16 @@ plt.rc('legend', fontsize=18)
 plt.rc('font', family='sans-serif')
 
 
-def plot_file_data(plot=False):
+
+def lowpass(voltage, cutoff_frequency, sampling):
+    
+    nyquist_frequency = 0.5*sampling
+    b, a = signal.butter(1, cutoff_frequency /
+                             nyquist_frequency, btype='low')
+    filtered_voltage = signal.lfilter(b, a, voltage)
+    return filtered_voltage
+
+def plot_file_data(plot=True):
     # Create file dialog window
     root = Tk()
     root.withdraw()
@@ -58,71 +71,41 @@ def plot_file_data(plot=False):
             time = data[:, 0]
             voltage = data[:, 1]
         elif ext == '.txt':
-            data = pd.read_csv(file_path, skiprows=16,
+            #data = pd.read_csv(file_path, skiprows=16,
+            #                   header=None, delim_whitespace=True).values
+            #voltage = data[:, 0]
+            #time_step = 0.00001
+            #time = np.arange(0, (len(voltage)-0.5)*time_step, time_step)
+
+            data = pd.read_csv(file_path, skiprows=1,
                                header=None, delim_whitespace=True).values
-            voltage = data[:, 0]
-            time_step = 0.00001
-            time = np.arange(0, (len(voltage)-0.5)*time_step, time_step)
-        elif ext == '.tdms':
-            tdms_file = TdmsFile(file_path)
-            properties = tdms_file['Analog'].properties
-            scanrate = properties['ScanRate']
-            reference = tdms_file['Analog']['AI1']
-            voltage = tdms_file['Analog']['AI2']
-            time_step = 0.00001
-            time = np.arange(0, (len(voltage)-0.5)*time_step, time_step)
+            voltage = data[:, 1]
+            time_step = 0.000001
+            time = data[:,0]
+
         else:
             raise ValueError('File type not supported')
 
-        # Load your original time series data (replace this with your actual data loading code)
-        # Assuming your original data is stored in the variable 'original_data'
-        # original_data = ...
-
-        # Define the original and target sampling frequencies
-        # original_sampling_freq = 100000  # 100 kHz
-        # target_sampling_freq = 30  # 30 samples/s
-
-        # Calculate the resampling factor
-        # resampling_factor = original_sampling_freq // target_sampling_freq
-
-        # # Use the resample function to downsample the data
-        # voltage = signal.resample(voltage, len(voltage) // resampling_factor)
-        # time = signal.resample(time, len(time) // resampling_factor)
-        # Now 'downsampled_data' contains your downsampled time series data
-
-        # Save or process the downsampled data as needed
-
         # Store file data in array
         file_data.append({'time': time, 'voltage': voltage,
-                         'fs': 100000, 'name': file_names[i]})
+                         'fs': 1000000, 'name': file_names[i]})
 
-        # Apply a 1Hz low-pass filter to the voltage data
-        cutoff_frequency = 10  # 1 Hz
-        nyquist_frequency = 0.5 * 100000  # Nyquist frequency for your sampling rate
-        b, a = signal.butter(1, cutoff_frequency /
-                             nyquist_frequency, btype='low')
-        filtered_voltage = signal.lfilter(b, a, voltage)
-
-        # ... (rest of the existing code)
+        fs = 1000000
+        # Apply a 10 Hz low-pass filter to the voltage data
+        filtered_voltage = lowpass(voltage, 1000, fs)
 
         # Plot the data
         if plot:
 
             plt.figure(figsize=(14, 5))
 
-            plt.plot(time, voltage, linewidth=1,color='r', alpha=0.25, label='APD')
-            plt.plot(time, filtered_voltage, linewidth=2, color = 'r', label='APD (1Hz LPF)')
-            # plt.plot(time_2, signal_data, linewidth = 2, color = 'm', label = '1D Video Intensity')
-            plt.xticks(np.arange(0, max(time), step=10))
+            plt.plot(time, voltage, linewidth=1,color='red', alpha=0.25, label='APD')
+            plt.plot(time, filtered_voltage, linewidth=2, color = 'red', label='APD (LPF)')
+            plt.xticks(np.arange(0, max(time), step=1))
             plt.xticks(rotation=45, ha='right')
             plt.xlabel('Time (s)')
             plt.ylabel('APD Signal (V)')
             plt.gca().yaxis.set_major_formatter(StrMethodFormatter('{x:,.2f}')) # 2 decimal places
-            
-            xmin = 514
-            xmax = xmin + 40
-            ymin = 1.5
-            ymax = ymin + 0.34
             
             #plt.xlim([xmin, xmax])
             #plt.ylim([ymin, ymax])
@@ -138,7 +121,12 @@ def plot_file_data(plot=False):
 def Lorentzian(f, A, fc):
     return A / (f**2 + fc**2)
 
-def compute_PSD(voltage, fs, start, ending, name, run=False):
+def notch(voltage_array, notch_freq, q, fs):
+    b_notch, a_notch = signal.iirnotch(notch_freq, q, fs)
+    voltage_array = signal.filtfilt(b_notch, a_notch, voltage_array)
+    return voltage_array
+
+def compute_PSD(voltage, fs, name, run=False):
     if run:
 
         if not isinstance(voltage, np.ndarray):
@@ -148,13 +136,11 @@ def compute_PSD(voltage, fs, start, ending, name, run=False):
 
         notch_freq = 59.06
         q = 40
-        b_notch, a_notch = signal.iirnotch(notch_freq, q, fs)
-        voltage_array = signal.filtfilt(b_notch, a_notch, voltage_array)
+        voltage_array = notch(voltage_array, notch_freq, q, fs)
 
         notch_freq = 0.1
         q = 10
-        b_notch, a_notch = signal.iirnotch(notch_freq, q, fs)
-        voltage_array = signal.filtfilt(b_notch, a_notch, voltage_array)
+        voltage_array = notch(voltage_array, notch_freq, q, fs)
         
         voltage_fft = scipy.fftpack.fft(voltage_array)
         voltage_PSD = np.abs(voltage_fft)**2 / (len(voltage_array)/fs)
@@ -199,16 +185,15 @@ def psd_fitter(psd, minFreq, maxFreq, filename, plot=True, run=False):
         mpl.rcParams['axes.spines.top'] = False
         if plot:
             plt.figure(figsize=(10,8))
-            plt.plot(fs, ys, '.', label="data", color='r', alpha = 0.5)
+            plt.plot(fs, ys, '.', label="data", color='magenta', alpha = 0.5)
             plt.plot(fs, Lorentzian(fs, A, fc), '--', label="fitted", color='k')
-            plt.text(0.975, 0.925, f"fc = {abs(fc):.3f} Hz", fontsize=22, bbox=dict(facecolor='r', alpha=0.5), transform=plt.gca().transAxes, horizontalalignment='right')
+            plt.text(0.975, 0.925, f"fc = {abs(fc):.3f} Hz", fontsize=22, bbox=dict(facecolor='magenta', alpha=0.5), transform=plt.gca().transAxes, horizontalalignment='right')
             plt.xlabel('Frequency (Hz)')
             plt.ylabel('P (V$^2$/Hz)')
             plt.xscale('Log')
             plt.yscale('Log')
             plt.tight_layout()
-            plt.xlim([4, 50000])
-            #plt.savefig(filename + 'PSDhigh8.png')
+            plt.xlim([4, 5000])
             # plt.close()
         else:
             pass
@@ -216,37 +201,44 @@ def psd_fitter(psd, minFreq, maxFreq, filename, plot=True, run=False):
     else:
         pass
 
-def histogram(trapped, bins='auto', density=True, plot=True, run=False):
+def histogram(trapped, fs, bins='auto', density=True, plot=True, run=False):
     if run:
         
-        #Apply a 1Hz low-pass filter to the voltage data
-        cutoff_frequency = 10  # 1 Hz
-        nyquist_frequency = 0.5 * 100000  # Nyquist frequency for your sampling rate
-        b, a = signal.butter(1, cutoff_frequency /
-                              nyquist_frequency, btype='low')
-        trapped = signal.lfilter(b, a, trapped)
+        # Apply a 10 Hz low-pass filter to the voltage data
+        trapped = lowpass(trapped, 100, fs)
         if plot:
-            plt.figure(figsize=(10,8))
+            plt.figure(figsize=(5,8))
+            counts, bins, bars = plt.hist(trapped, bins = 10000, color = 'red', alpha = 0.25, edgecolor='red',  orientation='horizontal', density = True)
+            bin_centers = (bins[:-1] + bins[1:]) / 2
+            plt.xlabel('Density', labelpad=12.5)
+            plt.ylabel('Transmission (V)')
+            plt.ylim([0.42, 0.56])
+            plt.xticks(rotation=45, ha='right')
+            plt.grid(axis='y')
+            plt.tight_layout()
+            plt.show()
 
-            if density:
-                # Fit a distribution to the data
-                param = stats.norm.fit(trapped)
-                xmin, xmax = plt.xlim()
-                x = np.linspace(xmin, xmax, 100)
-                pdf = stats.norm.pdf(x, *param)
-                #plt.plot(x, pdf, color='tab:orange', label='PDF')
 
-            # Use KDE to create a smooth line outlining the histogram
-            kde = stats.gaussian_kde(trapped)
-            x_kde = np.linspace(min(trapped), max(trapped), 1000)
-            y_kde = kde(x_kde)
-            plt.plot(x_kde, y_kde, color='r', linestyle='-', linewidth=2, label='Smooth Outline')
+            plt.figure(figsize=(8,5))
+            # Calculate the bin centers
+            bin_centers = (bins[:-1] + bins[1:]) / 2
+            # Plot and fill the original histogram
+            plt.fill_betweenx(bin_centers, 0, counts * (bins[1] - bins[0]), color='red', alpha=0.5)
+            # Overlay the filled histogram with counts multiplied by 10
+            plt.fill_betweenx(bin_centers, 0, counts * 10 * (bins[1] - bins[0]), color='red', alpha=0.25)
+            plt.xlabel('Density', labelpad=12.5)
+            plt.ylabel('Transmission (V)')
+            plt.xticks(rotation=45, ha='right')
+            plt.grid(axis='y')
+            plt.tight_layout()
+            plt.show()
 
-            # Fill area underneath the smooth line
-            plt.fill_between(x_kde, y_kde, alpha=0.3, color='r')
-
-            plt.xlabel('Value')
-            plt.ylabel('Frequency' if not density else 'Probability Density')
+            plt.figure(figsize=(5,8))
+            Vx = -1*np.log(counts)
+            plt.plot(Vx, color = 'red', linewidth = 2, linestyle = '-')
+            plt.ylabel('$K_{b}$T')
+            plt.grid(axis='y')
+            plt.tight_layout()
             plt.show()
             
         else:
@@ -255,22 +247,6 @@ def histogram(trapped, bins='auto', density=True, plot=True, run=False):
         return
     else:
         return
-
-def plot_on_top(files, plot=False):
-    if plot:
-        plt.figure()
-
-        for data in files:
-            time = data['time']
-            voltage = data['voltage']
-            name = data['name']
-            plt.plot(time, voltage, linewidth=1)
-
-        plt.xticks(np.arange(0, max(time), step=100))
-        plt.xlabel('Time (s)', fontsize=20, fontweight='bold')
-        plt.ylabel('Voltage (V)', fontsize=20, fontweight='bold')
-        plt.xticks(fontsize=16)
-        plt.show()
 
 def calculate_rmsd(signal, window_length, file_name, run=False):
     """
@@ -306,97 +282,56 @@ def calculate_rmsd(signal, window_length, file_name, run=False):
         return average_rmsd
     else:
         pass
-
-def newFile(trapped, write=False):
-
-    if write:
-        # reshape data to a single column
-        trapped = trapped.reshape(-1, 1)
-
-        # save data to text file
-        np.savetxt('CTC013_0802.txt', trapped, fmt='%.8f', delimiter='\n')
-    else:
-        pass
-
-def acorr(x, lags):
-    
-    x_demeaned = x-x.mean()
-    corr=np.correlate(x_demeaned,x_demeaned,'full')[len(x)-1:]/(np.var(x)*len(x))
-    return corr[:len(lags)]
-
-def energyLandscape(trapped):
-    
-        # Apply a 1Hz low-pass filter to the voltage data
-    cutoff_frequency = 100  # 1 Hz
-    nyquist_frequency = 0.5 * 100000  # Nyquist frequency for your sampling rate
-    b, a = signal.butter(1, cutoff_frequency /
-                         nyquist_frequency, btype='low')
-    trapped = signal.lfilter(b, a, trapped)
-    
-    hist, bin_edges = np.histogram(trapped, density=True, bins =10)
-    
-    plt.figure(figsize=(7,4))
-    plt.hist(trapped, bins = 100, density=True, color = 'r')
-    
-    
-    Vx = -1*np.log(hist)
-    
-    plt.figure(figsize=(7,4))
-    plt.plot(Vx, color = 'r', linewidth = 2, linestyle = '-')
-    return 
-    # Step 3: Fit to a Two-Exponential Function
-def two_exp_function(t, a1, tau1, a2, tau2):
-    return a1 * np.exp(-t / tau1) + a2 * np.exp(-t / tau2)
-        
+       
 t = True
 f = False
 PSD_data = []
 files = []
 cornerFreq = []
 file_data = plot_file_data(plot=t)
-
-# file_data = []
-# data = pd.read_csv('/Volumes/SeaGlassUSB/BSA_6.454mW.txt', skiprows=16,
-#                     header=None, delim_whitespace=True).values
-# voltage = data[:, 0]
-# time_step = 0.00001
-# time = np.arange(0, (len(voltage)-0.5)*time_step, time_step)
-
-# file_names = 'BSA6.454mW'
-# file_data.append({'time': time, 'voltage': voltage,
-#                   'fs': 100000, 'name': file_names})
 if file_data:
     print("Files selected successfully!")
     average_rmsd_list = []
     for data in file_data:
         time = data['time']
-        start = 6
-        ending = 11
+
+        #Select the start and end point of the data (in seconds)
+        start = 10
+        ending = 15 
+
         voltage = data['voltage']
+
         minTrappedTime = find_nearest_idx(time, start)
         maxTrappedTime = find_nearest_idx(time, ending)
+
         trapped = voltage[minTrappedTime:maxTrappedTime]
+
         fs = data['fs']
         name = data['name']
-        
-        #print(name)
-        
-        psd_run = t
-        rmsd_run = f
-        hist_run = f
-        
-        histogram(trapped, run=hist_run)
-        average_rmsd = calculate_rmsd(trapped, 5000, name, run=True)
-        #energyLandscape(trapped)
 
-        psd = compute_PSD(trapped, fs, start, ending, name, run=psd_run)
+        filtered_trap = lowpass(trapped, 10, fs)
+
+        print(name)
+
+
+        #Select which functions to run
+        psd_run = t
+        rmsd_run = t
+        hist_run = t
+        
+        #Call histogram function
+        histogram(trapped, fs, run=hist_run)
+        average_rmsd = calculate_rmsd(trapped, 50, name, run=rmsd_run)
+        average_rmsd_list.append(average_rmsd)
+
+        #Call compute_PSD function to compute PSD
+        psd = compute_PSD(trapped, fs, name, run=psd_run)
         PSD_data.append(psd)
         files.append(name)
-        
-    newFile(trapped, write=False)
+
 
     for array, file_name in zip(PSD_data, files):
-        fc = psd_fitter(array, 4, 50000, file_name, run=psd_run)
+        fc = psd_fitter(array, 4, 5000, file_name, run=psd_run)
         cornerFreq.append(fc)
 
     print(average_rmsd_list)
