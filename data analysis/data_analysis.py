@@ -21,6 +21,10 @@ from scipy.stats import norm
 from scipy import stats
 from scipy import signal
 from matplotlib.ticker import StrMethodFormatter
+from numpy.polynomial.polynomial import Polynomial
+from scipy.ndimage import gaussian_filter1d
+from scipy.signal import savgol_filter
+from scipy.optimize import minimize_scalar
 
 sns.set_theme(style='ticks')
 
@@ -71,28 +75,28 @@ def plot_file_data(plot=True):
             time = data[:, 0]
             voltage = data[:, 1]
         elif ext == '.txt':
-            #data = pd.read_csv(file_path, skiprows=16,
-            #                   header=None, delim_whitespace=True).values
-            #voltage = data[:, 0]
-            #time_step = 0.00001
-            #time = np.arange(0, (len(voltage)-0.5)*time_step, time_step)
-
-            data = pd.read_csv(file_path, skiprows=1,
+            data = pd.read_csv(file_path, skiprows=16,
                                header=None, delim_whitespace=True).values
-            voltage = data[:, 1]
-            time_step = 0.000001
-            time = data[:,0]
+            voltage = data[:, 0]
+            time_step = 0.00001
+            time = np.arange(0, (len(voltage)-0.5)*time_step, time_step)
+
+            #data = pd.read_csv(file_path, skiprows=1,
+            #                   header=None, delim_whitespace=True).values
+            #voltage = data[:, 1]
+            #time_step = 0.000001
+            #time = data[:,0]
 
         else:
             raise ValueError('File type not supported')
 
         # Store file data in array
         file_data.append({'time': time, 'voltage': voltage,
-                         'fs': 1000000, 'name': file_names[i]})
+                         'fs': 100000, 'name': file_names[i]})
 
-        fs = 1000000
+        fs = 100000
         # Apply a 10 Hz low-pass filter to the voltage data
-        filtered_voltage = lowpass(voltage, 1000, fs)
+        filtered_voltage = lowpass(voltage, 10, fs)
 
         # Plot the data
         if plot:
@@ -201,46 +205,114 @@ def psd_fitter(psd, minFreq, maxFreq, filename, plot=True, run=False):
     else:
         pass
 
+def find_local_minima(fitted_values, bin_centers):
+    # Compute the derivative of the fitted function
+    derivative = np.gradient(fitted_values, bin_centers)
+    
+    # Find the indices where the derivative changes sign from negative to positive
+    minima_indices = np.where((derivative[:-1] < 0) & (derivative[1:] > 0))[0]
+    
+    # Get the x-values of the local minima
+    local_minima_x = bin_centers[minima_indices]
+    # Get the corresponding y-values of the local minima
+    local_minima_y = fitted_values[minima_indices]
+    
+    return local_minima_x, local_minima_y
+
+def find_local_maxima(fitted_values, bin_centers):
+    # Compute the derivative of the fitted function
+    derivative = np.gradient(fitted_values, bin_centers)
+    
+    # Find the indices where the derivative changes sign from positive to negative
+    maxima_indices = np.where((derivative[:-1] > 0) & (derivative[1:] < 0))[0]
+    
+    # Get the x-values of the local maxima
+    local_maxima_x = bin_centers[maxima_indices]
+    # Get the corresponding y-values of the local maxima
+    local_maxima_y = fitted_values[maxima_indices]
+    
+    return local_maxima_x, local_maxima_y
+
 def histogram(trapped, fs, bins='auto', density=True, plot=True, run=False):
     if run:
-        
         # Apply a 10 Hz low-pass filter to the voltage data
-        trapped = lowpass(trapped, 100, fs)
+        trapped = lowpass(trapped, 10, fs)  # Note the change to 10 Hz cutoff
+        # Remove the first 7500 values to eliminate the initial "step"
+        trapped = trapped[7500:]
+
         if plot:
-            plt.figure(figsize=(5,8))
-            counts, bins, bars = plt.hist(trapped, bins = 10000, color = 'red', alpha = 0.25, edgecolor='red',  orientation='horizontal', density = True)
+            plt.figure(figsize=(8, 8))
+            # Compute the histogram
+            counts, bins = np.histogram(trapped, bins=1000, density=density)
             bin_centers = (bins[:-1] + bins[1:]) / 2
-            plt.xlabel('Density', labelpad=12.5)
-            plt.ylabel('Transmission (V)')
-            plt.ylim([0.42, 0.56])
-            plt.xticks(rotation=45, ha='right')
-            plt.grid(axis='y')
-            plt.tight_layout()
-            plt.show()
 
-
-            plt.figure(figsize=(8,5))
-            # Calculate the bin centers
-            bin_centers = (bins[:-1] + bins[1:]) / 2
             # Plot and fill the original histogram
-            plt.fill_betweenx(bin_centers, 0, counts * (bins[1] - bins[0]), color='red', alpha=0.5)
+            plt.fill_between(bin_centers, 0, counts * (bins[1] - bins[0]), color='red', alpha=0.5)
             # Overlay the filled histogram with counts multiplied by 10
-            plt.fill_betweenx(bin_centers, 0, counts * 10 * (bins[1] - bins[0]), color='red', alpha=0.25)
-            plt.xlabel('Density', labelpad=12.5)
-            plt.ylabel('Transmission (V)')
+            plt.fill_between(bin_centers, 0, counts * 10 * (bins[1] - bins[0]), color='red', alpha=0.25)
+            plt.ylabel('Density', labelpad=12.5)
+            plt.xlabel('Transmission (V)')
             plt.xticks(rotation=45, ha='right')
-            plt.grid(axis='y')
+            plt.grid(axis='x')
             plt.tight_layout()
             plt.show()
 
-            plt.figure(figsize=(5,8))
-            Vx = -1*np.log(counts)
-            plt.plot(Vx, color = 'red', linewidth = 2, linestyle = '-')
+            plt.figure(figsize=(8, 8))
+            Vx = -1 * np.log(counts)
+            plt.plot(bin_centers, Vx, color='#800000', linewidth=3, linestyle='-')
+            plt.xlabel('Transmission (V)')
             plt.ylabel('$K_{b}$T')
             plt.grid(axis='y')
             plt.tight_layout()
             plt.show()
-            
+
+            # Third plot with two y-axes
+            fig, ax1 = plt.subplots(figsize=(8, 4))
+
+            # Plot histogram as a line plot
+            ax1.plot(bin_centers, counts, color='red', linewidth=2)
+            ax1.set_xlabel('Transmission (V)')
+            ax1.set_ylabel('Density', color='red')
+            ax1.tick_params(axis='y', labelcolor='red')
+
+            # Create a second y-axis
+            ax2 = ax1.twinx()
+            ax2.plot(bin_centers, Vx, color='black', linewidth=3, linestyle='-')
+            ax2.set_ylabel('$K_{b}$T', color='black')
+            ax2.tick_params(axis='y', labelcolor='black')
+            fig.tight_layout()
+            plt.show()
+
+            Vx_filtered = savgol_filter(Vx, 151, 6)
+            Vx_fitted = np.polyfit(bin_centers, Vx_filtered, 250)
+            # Generate fitted values for all bin_centers
+            Vx_fitted_values = np.polyval(Vx_fitted, bin_centers)
+
+            # Find local minima
+            local_minima_x, local_minima_y = find_local_minima(Vx_fitted_values, bin_centers)
+            print("Local Minima X:", local_minima_x)
+            print("Local Minima Y:", local_minima_y)
+
+            # Find saddle points
+            local_maxima_x, local_maxima_y = find_local_maxima(Vx_fitted_values, bin_centers)
+            print("Saddle Points X:", local_maxima_x)
+            print("Saddle Points Y:", local_maxima_y)
+
+            # Plot the fitted curve
+            plt.figure(figsize=(8, 8))
+            plt.plot(bin_centers, Vx, 'k-', label = 'Raw')
+            plt.plot(bin_centers, Vx_filtered, color = 'blue', linestyle = '-', label = 'Sav-Gol Filter')
+            plt.plot(bin_centers, Vx_fitted_values, color = 'red', linestyle = '--', linewidth = 2, label = 'Fit')
+            plt.scatter(local_minima_x, local_minima_y, color='red', s = 100)
+            plt.scatter(local_maxima_x, local_maxima_y, color='red', marker='d', s = 100)
+            plt.xlabel('Transmission (V)')
+            plt.ylabel('$K_{b}$T')
+            plt.legend(frameon = False)
+            plt.tight_layout()
+            plt.show()
+
+
+
         else:
             pass
 
@@ -296,8 +368,8 @@ if file_data:
         time = data['time']
 
         #Select the start and end point of the data (in seconds)
-        start = 10
-        ending = 15 
+        start = time[0]
+        ending = time[-1] 
 
         voltage = data['voltage']
 
@@ -315,8 +387,8 @@ if file_data:
 
 
         #Select which functions to run
-        psd_run = t
-        rmsd_run = t
+        psd_run = f
+        rmsd_run = f
         hist_run = t
         
         #Call histogram function
