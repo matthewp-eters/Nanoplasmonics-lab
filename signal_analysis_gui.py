@@ -37,7 +37,7 @@ class DataAnalysisGUI:
         
         # Create matplotlib figures with custom gridspec
         self.fig = Figure(figsize=(14, 8))
-        gs = GridSpec(2, 3, figure=self.fig, width_ratios=[2, 1, 1], wspace=0)
+        gs = GridSpec(2, 3, figure=self.fig, width_ratios=[3, 1, 2.5], wspace = 0)
         
         # Time series plot
         self.ax_time = self.fig.add_subplot(gs[0, 0])
@@ -46,7 +46,7 @@ class DataAnalysisGUI:
         self.ax_histogram = self.fig.add_subplot(gs[0, 1], sharey=self.ax_time)
         
         # PSD plot (narrower)
-        self.ax_psd = self.fig.add_subplot(gs[1, 0])
+        self.ax_psd = self.fig.add_subplot(gs[0, 2])
         
         self.fig.tight_layout(pad=3.0)
         
@@ -413,9 +413,13 @@ class DataAnalysisGUI:
             
             self.ax_psd.loglog(freq, A/(freq**2 + fc**2), 'r-', linewidth=4)
             self.ax_psd.set_xlabel('Frequency [Hz]')
+            self.ax_psd.yaxis.tick_right()
             self.ax_psd.set_ylabel('Power Spectral Density [$V^2$/Hz]')
             self.ax_psd.text(0.25, 0.000001, f'$f_c$: {abs(fc):.0f} Hz')
             self.ax_psd.set_xlim(0.2, 4000)
+            self.ax_psd.yaxis.set_label_position('right')
+
+
 
         except Exception as e:
             print(f"Failed to fit Lorentzian: {str(e)}")
