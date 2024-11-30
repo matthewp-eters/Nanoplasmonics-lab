@@ -36,7 +36,7 @@ class DataAnalysisGUI:
         self.plot_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
         
         # Create matplotlib figures with custom gridspec
-        self.fig = Figure(figsize=(14, 8))
+        self.fig = Figure(figsize=(10, 8))
         gs = GridSpec(2, 3, figure=self.fig, width_ratios=[3, 1, 2.5], wspace = 0)
         
         # Time series plot
