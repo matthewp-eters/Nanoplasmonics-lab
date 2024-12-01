@@ -13,6 +13,9 @@ import scipy
 import seaborn as sns
 
 sns.set_theme(style='white')
+
+SAMPLING_RATE = 100000
+
 class DataAnalysisGUI:
     def __init__(self, root):
         self.root = root
@@ -36,8 +39,8 @@ class DataAnalysisGUI:
         self.plot_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
         
         # Create matplotlib figures with custom gridspec
-        self.fig = Figure(figsize=(10, 8))
-        gs = GridSpec(2, 3, figure=self.fig, width_ratios=[3, 1, 2], wspace = 0)
+        self.fig = Figure(figsize=(9, 8))
+        gs = GridSpec(2, 3, figure=self.fig, width_ratios=[3, 0.5, 1], wspace = 0)
         
         # Time series plot
         self.ax_time = self.fig.add_subplot(gs[0, 0])
@@ -113,7 +116,7 @@ class DataAnalysisGUI:
         
         # Analysis buttons
         ttk.Button(analysis_frame, text="Plot Data", command=self.plot_data).pack(pady=5, fill=tk.X)
-        ttk.Button(analysis_frame, text="Update PSD", command=self.update_psd).pack(pady=5, fill=tk.X)
+        #ttk.Button(analysis_frame, text="Update PSD", command=self.update_psd).pack(pady=5, fill=tk.X)
         
         # New buttons frame
         buttons_frame = ttk.LabelFrame(self.control_frame, text="Additional Options", padding="5")
@@ -138,7 +141,7 @@ class DataAnalysisGUI:
             return
         
         # Set plot start and stop times to full data range
-        time_length = len(self.full_data) * 0.00001
+        time_length = len(self.full_data) * (1/SAMPLING_RATE)
         self.plot_start_time.delete(0, tk.END)
         self.plot_start_time.insert(0, "0")
         self.plot_stop_time.delete(0, tk.END)
@@ -162,17 +165,17 @@ class DataAnalysisGUI:
         
         # Filtering
         cutoff = float(self.cutoff_freq.get())
-        nyq = 0.5 * 100000  # sampling rate
+        nyq = 0.5 * SAMPLING_RATE  # sampling rate
         normal_cutoff = cutoff / nyq
         b, a = butter(4, normal_cutoff, 'low')
         filtered_data = filtfilt(b, a, plot_data)
         
-        time_step = 0.00001
+        time_step = 1/SAMPLING_RATE
         time_variable = np.arange(start=0, stop=len(plot_data), step=1) * time_step
         
         # Plot both original and filtered
-        time_ax.plot(time_variable, plot_data, linewidth=0.5, alpha=0.5, label='Raw Data')
-        time_ax.plot(time_variable, filtered_data, linewidth=1, alpha=1, label=f'{cutoff:.0f} Hz Filter')
+        time_ax.plot(time_variable, plot_data, linewidth=0.5, alpha=0.5, label='Raw Data', color = 'k')
+        time_ax.plot(time_variable, filtered_data, linewidth=1, alpha=1, label=f'{cutoff:.0f} Hz Filter', color = 'k')
         time_ax.set_xlabel('Time [s]')
         time_ax.set_ylabel('Normalized Transmission [V]')
         time_ax.set_xlim(0, time_variable[-1])
@@ -203,7 +206,7 @@ class DataAnalysisGUI:
         
         # Calculate PSD
         n = len(self.full_data)
-        dt = 0.00001
+        dt = 1/SAMPLING_RATE
         data_fft = scipy.fftpack.fft(self.full_data)
         data_psd = np.abs(data_fft)**2 / (n*dt)
         freq = scipy.fftpack.fftfreq(n, dt)
@@ -212,7 +215,7 @@ class DataAnalysisGUI:
         data_psd = data_psd[i]
         
         # Plot PSD
-        psd_ax.loglog(freq, data_psd)
+        psd_ax.loglog(freq, data_psd, color = 'k')
         
         # Fit Lorentzian
         def func(x, A, fc):
@@ -254,7 +257,7 @@ class DataAnalysisGUI:
                 self.analysis_data = self.current_data
                 
                 # Set stop time to full data length
-                time_length = len(self.full_data) * 0.00001
+                time_length = len(self.full_data) * (1/SAMPLING_RATE)
                 self.plot_stop_time.delete(0, tk.END)
                 self.plot_stop_time.insert(0, f"{time_length:.2f}")
                 self.analysis_stop_time.delete(0, tk.END)
@@ -306,7 +309,7 @@ class DataAnalysisGUI:
             self.ax_histogram.clear()
             
             # Get time array for the selected data
-            time_step = 0.00001
+            time_step = 1/SAMPLING_RATE
             time_variable = np.arange(start=0, stop=len(plot_data), step=1) * time_step
             
             # Determine plot type
@@ -316,7 +319,7 @@ class DataAnalysisGUI:
             cutoff = float(self.cutoff_freq.get())
             
             # Filtering
-            nyq = 0.5 * 100000  # sampling rate
+            nyq = 0.5 * SAMPLING_RATE  # sampling rate
             normal_cutoff = cutoff / nyq
             b, a = butter(4, normal_cutoff, 'low')
             filtered_data = filtfilt(b, a, plot_data)
@@ -384,7 +387,7 @@ class DataAnalysisGUI:
         
         # Calculate PSD
         n = len(self.analysis_data)
-        dt = 0.00001
+        dt = 1/SAMPLING_RATE
 
         data_fft = scipy.fftpack.fft(self.analysis_data)
         data_psd = np.abs(data_fft)**2 / (n*dt)
@@ -396,7 +399,7 @@ class DataAnalysisGUI:
         data_psd = data_psd[i]
         
         # Plot PSD
-        self.ax_psd.loglog(freq, data_psd, color = 'k', alpha = 0.5)
+        self.ax_psd.loglog(freq, data_psd, color = 'k')
         
         # Fit and plot Lorentzian
         def func(x, A, fc):
@@ -456,11 +459,11 @@ class Get_data:
                     skip_lines = i - 1
                     break
         self.data = np.genfromtxt(file_path, skip_header=skip_lines)
-        self.sampling_rate = 100000
+        self.sampling_rate = SAMPLING_RATE
         self.time_length = len(self.data) / self.sampling_rate
 
     def select(self, data, start_time, stop_time):
-        dt = 0.00001
+        dt = 1/SAMPLING_RATE
         start_p = int(start_time / dt)
         stop_p = int(stop_time / dt)
         return data[start_p:stop_p]
