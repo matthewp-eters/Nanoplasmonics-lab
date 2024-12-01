@@ -12,22 +12,20 @@ from tkinter import colorchooser
 import scipy
 import seaborn as sns
 
-sns.set_theme(style='white')
+sns.set_theme(style='ticks')
 
 SAMPLING_RATE = 100000
-
 class DataAnalysisGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Signal Analysis Tool")
         self.root.geometry("1600x900")
-        
+
         # Data storage
         self.data_instance = None
         self.full_data = None
         self.current_data = None
         self.analysis_data = None
-        
         self.create_gui_elements()
         
     def create_gui_elements(self):
@@ -61,6 +59,7 @@ class DataAnalysisGUI:
         
         # Add toolbar
         self.toolbar = NavigationToolbar2Tk(self.canvas, self.plot_frame)
+        self.toolbar.configure(bg='black')
         self.toolbar.update()
         
         # Control elements
@@ -386,6 +385,17 @@ class DataAnalysisGUI:
             # Calculate bin centers
             bin_centers = 0.5 * (bins[1:] + bins[:-1])
             
+            # Gaussian kernel
+            sd = 5
+            x = np.arange(1, 129)
+            g = 1 / (np.sqrt(2 * np.pi) * sd) * np.exp(-((x - 64.5)**2) / (2 * sd**2))
+
+
+            # Padding to have 128 (2^7)
+            pp = np.zeros(128)
+            pp[14:114] = counts  # Note: Python uses 0-based indexing
+
+
             # Calculate Vx
             Vx = -1 * np.log(counts)
 
@@ -400,7 +410,6 @@ class DataAnalysisGUI:
             self.ax_EL.plot(bin_centers, Vx, color='black', linewidth=3, linestyle='-')
             self.ax_EL.set_ylabel('$K_{b}$T', color='black')
             self.ax_EL.tick_params(axis='y', labelcolor='black')
-            self.ax_EL.tick_params(axis='x', which='major', tick1On=False, tick2On=False, pad=-2.5)
             self.ax_EL.yaxis.set_label_position('right')
             self.ax_EL.yaxis.tick_right()
             self.ax_EL.set_xlabel('Norm. Transmission [V]')
@@ -525,7 +534,10 @@ class DataAnalysisGUI:
             self.ax_psd.set_xlabel('Frequency [Hz]')
             self.ax_psd.yaxis.tick_right()
             self.ax_psd.set_ylabel('Power Spectral Density [$V^2$/Hz]')
-            self.ax_psd.text(0.25, 0.000001, f'$f_c$: {abs(fc):.0f} Hz')
+            self.ax_psd.annotate(f'$f_c$: {abs(fc):.0f} Hz', 
+                                xy=(0.05, 0.05),  # Data coordinates
+                                xycoords='axes fraction',  # Use fraction of axis as coordinate system
+                                fontsize=12)            
             self.ax_psd.set_xlim(0.2, 4000)
             self.ax_psd.tick_params(axis='x', which='major', tick1On=False, tick2On=False, pad=-2.5)
             self.ax_psd.yaxis.set_label_position('right')
@@ -578,6 +590,7 @@ class Get_data:
 
 if __name__ == "__main__":
     root = tk.Tk()
+    # Change the background color using configure
     app = DataAnalysisGUI(root)
     root.mainloop()
     # Call this to apply the modifications
