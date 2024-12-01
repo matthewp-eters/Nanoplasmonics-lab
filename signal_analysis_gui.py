@@ -232,6 +232,44 @@ class DataAnalysisGUI:
         plt.setp(self.ax_histogram.get_yticklabels(), visible=False)
 
 
+
+        EL_fig, EL_ax = plt.subplots(figsize=(4, 4))
+
+        start = float(self.plot_start_time.get())
+        stop = float(self.plot_stop_time.get())
+        plot_data = self.data_instance.select(self.full_data, start, stop)
+        plot_data /= np.mean(plot_data)
+        plot_data = plot_data + 0.002441 * np.random.uniform(0, 1, len(plot_data))
+
+        # Create histogram
+        counts, bins = np.histogram(plot_data, bins=100, density=True)
+        
+        # Calculate bin centers
+        bin_centers = 0.5 * (bins[1:] + bins[:-1])
+        
+        # Calculate Vx
+        Vx = -1 * np.log(counts)
+
+        # Plot histogram as a line plot on the first y-axis
+        EL_ax.plot(bin_centers, counts, color='red', linewidth=2)
+        EL_ax.set_xlabel('Norm. Transmission [V]')
+        EL_ax.set_ylabel('Density', color='red')
+        EL_ax.tick_params(axis='y', labelcolor='red')
+
+        # Create a second y-axis
+        ax2 = EL_ax.twinx()
+        ax2.plot(bin_centers, Vx, color='black', linewidth=3, linestyle='-')
+        ax2.set_ylabel('$K_{b}$T', color='black')
+        ax2.tick_params(axis='y', labelcolor='black')
+
+        # Adjust layout
+        EL_fig.tight_layout()
+
+
+
+
+
+
         # PSD Plot
         psd_fig, psd_ax = plt.subplots(figsize=(5, 4))
         
@@ -352,16 +390,22 @@ class DataAnalysisGUI:
             Vx = -1 * np.log(counts)
 
             # Plot histogram as a line plot on the first y-axis
-            self.ax_EL.plot(bin_centers, counts, color='red', linewidth=2)
-            self.ax_EL.set_xlabel('Norm. Transmission [V]')
-            self.ax_EL.set_ylabel('Density', color='red')
-            self.ax_EL.tick_params(axis='y', labelcolor='red')
+            #self.ax_EL.plot(bin_centers, counts, color='red', linewidth=2)
+            #self.ax_EL.set_xlabel('Norm. Transmission [V]')
+            #self.ax_EL.set_ylabel('Density', color='red')
+            #self.ax_EL.tick_params(axis='y', labelcolor='red')
 
             # Create a second y-axis
-            ax2 = self.ax_EL.twinx()
-            ax2.plot(bin_centers, Vx, color='black', linewidth=3, linestyle='-')
-            ax2.set_ylabel('$K_{b}$T', color='black')
-            ax2.tick_params(axis='y', labelcolor='black')
+            #ax2 = self.ax_EL.twinx()
+            self.ax_EL.plot(bin_centers, Vx, color='black', linewidth=3, linestyle='-')
+            self.ax_EL.set_ylabel('$K_{b}$T', color='black')
+            self.ax_EL.tick_params(axis='y', labelcolor='black')
+            self.ax_EL.tick_params(axis='x', which='major', tick1On=False, tick2On=False, pad=-2.5)
+            self.ax_EL.yaxis.set_label_position('right')
+            self.ax_EL.yaxis.tick_right()
+            self.ax_EL.set_xlabel('Norm. Transmission [V]')
+
+
 
             # Adjust layout
             self.fig.tight_layout()
