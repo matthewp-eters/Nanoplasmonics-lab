@@ -37,7 +37,7 @@ class DataAnalysisGUI:
         
         # Create matplotlib figures with custom gridspec
         self.fig = Figure(figsize=(10, 8))
-        gs = GridSpec(2, 3, figure=self.fig, width_ratios=[3, 1, 2.5], wspace = 0)
+        gs = GridSpec(2, 3, figure=self.fig, width_ratios=[3, 1, 2], wspace = 0)
         
         # Time series plot
         self.ax_time = self.fig.add_subplot(gs[0, 0])
@@ -179,7 +179,7 @@ class DataAnalysisGUI:
         time_ax.legend(frameon=False)
         
         # Histogram Plot
-        hist_fig, hist_ax = plt.subplots(figsize=(2, 4))
+        hist_fig = plt.figure(figsize=(2, 4))
         #counts, bins = np.histogram(plot_data, bins='auto', density=True)
         #bin_centers = (bins[:-1] + bins[1:]) / 2
         #hist_ax.plot(counts/max(counts), bin_centers, alpha=1)
@@ -188,11 +188,11 @@ class DataAnalysisGUI:
         #hist_ax.set_ylabel('Normalized Transmission [V]')
         
         # Histogram plot (horizontal)
-        sns.histplot(y=plot_data, kde=True, stat='density', bins=25, ax = self.ax_histogram, alpha=0.3, color ='k')            
-        self.ax_histogram.set_xlabel('Density')
+        sns.histplot(y=plot_data, kde=True, stat='density', bins=25, alpha=0.3, color ='k')            
+        plt.xlabel('Density')
         
         # Remove y-axis label from histogram as it shares y-axis with time series
-        self.ax_histogram.set_ylabel('')
+        plt.ylabel('')
         
         # Hide histogram y-tick labels
         plt.setp(self.ax_histogram.get_yticklabels(), visible=False)
