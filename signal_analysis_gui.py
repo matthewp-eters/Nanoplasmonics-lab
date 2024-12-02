@@ -11,6 +11,8 @@ import os
 from tkinter import colorchooser
 import scipy
 import seaborn as sns
+import matplotlib.cm as cm
+import matplotlib.colors as mcolors
 
 sns.set_theme(style='ticks')
 
@@ -38,7 +40,7 @@ class DataAnalysisGUI:
         
         # Create matplotlib figures with custom gridspec
         self.fig = Figure(figsize=(9, 8))
-        gs = GridSpec(2, 3, figure=self.fig, width_ratios=[3, 0.5, 1], wspace = 0.1, hspace = 0.25)
+        gs = GridSpec(2, 2, figure=self.fig, width_ratios=[3, 1], wspace = 0.1, hspace = 0.25)
         
         # Time series plot
         self.ax_time = self.fig.add_subplot(gs[0, 0])
@@ -47,9 +49,9 @@ class DataAnalysisGUI:
         self.ax_histogram = self.fig.add_subplot(gs[0, 1], sharey=self.ax_time)
         
         # PSD plot (narrower)
-        self.ax_psd = self.fig.add_subplot(gs[0, 2])
+        self.ax_psd = self.fig.add_subplot(gs[1, 0])
 
-        self.ax_EL = self.fig.add_subplot(gs[1, 2])
+        self.ax_EL = self.fig.add_subplot(gs[1, 1])
         
         self.fig.tight_layout(pad=3.0)
         
@@ -407,6 +409,7 @@ class DataAnalysisGUI:
 
             # Create a second y-axis
             #ax2 = self.ax_EL.twinx()
+
             self.ax_EL.plot(bin_centers, Vx, color='black', linewidth=3, linestyle='-')
             self.ax_EL.set_ylabel('$K_{b}$T', color='black')
             self.ax_EL.tick_params(axis='y', labelcolor='black')
@@ -532,7 +535,7 @@ class DataAnalysisGUI:
             
             self.ax_psd.loglog(freq, A/(freq**2 + fc**2), 'r-', linewidth=4)
             self.ax_psd.set_xlabel('Frequency [Hz]')
-            self.ax_psd.yaxis.tick_right()
+            #self.ax_psd.yaxis.tick_right()
             self.ax_psd.set_ylabel('Power Spectral Density [$V^2$/Hz]')
             self.ax_psd.annotate(f'$f_c$: {abs(fc):.0f} Hz', 
                                 xy=(0.05, 0.05),  # Data coordinates
@@ -540,7 +543,7 @@ class DataAnalysisGUI:
                                 fontsize=12)            
             self.ax_psd.set_xlim(0.2, 4000)
             self.ax_psd.tick_params(axis='x', which='major', tick1On=False, tick2On=False, pad=-2.5)
-            self.ax_psd.yaxis.set_label_position('right')
+            #self.ax_psd.yaxis.set_label_position('right')
 
 
 
@@ -590,7 +593,6 @@ class Get_data:
 
 if __name__ == "__main__":
     root = tk.Tk()
-    # Change the background color using configure
     app = DataAnalysisGUI(root)
     root.mainloop()
     # Call this to apply the modifications
